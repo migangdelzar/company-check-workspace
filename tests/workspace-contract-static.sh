@@ -18,4 +18,22 @@ grep -Eq -- '-X\[\[:space:\]\]\+POST.*backend-service|backend-service.*-X\[\[:sp
 ! printf '%s\n' "$get_forms" | grep -Eq -- '--request[[:space:]]+POST|-[Xx][[:space:]]+POST'
 printf '%s\n' "$post_forms" | grep -Eq -- '--request[[:space:]]+POST|-[Xx][[:space:]]+POST'
 
+fixture="$(mktemp -d)"
+trap 'rm -rf "$fixture"' EXIT
+mkdir -p "$fixture/e2e" "$fixture/performance"
+cat > "$fixture/e2e/verification.bats" <<'EOF'
+curl --request POST /backend-service?verificationId=uuid\&query=text
+curl -X POST /backend-service?verificationId=uuid\&query=text
+cin name registrationDate address isActive IN_PROGRESS COMPLETED FAILED
+EOF
+cat > "$fixture/e2e/provider-failures.bats" <<'EOF'
+curl --request POST /backend-service?verificationId=uuid\&query=text
+curl -X POST /backend-service?verificationId=uuid\&query=text
+cin name registrationDate address isActive IN_PROGRESS COMPLETED FAILED
+EOF
+cat > "$fixture/performance/locustfile.py" <<'EOF'
+self.client.post("/backend-service", params={"verificationId": "uuid", "query": "text"})
+EOF
+"$validator" --client-contract-root "$fixture"
+
 printf 'workspace contract static assertions are present\n'
