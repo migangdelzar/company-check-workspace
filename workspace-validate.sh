@@ -14,8 +14,8 @@ if [ "${1:-}" = "--client-contract-root" ]; then
 fi
 client_root="${client_contract_root:-$workspace_root}"
 
-service_commit="b77903ca453525bb2410fd59ee17be6183020291"
-provider_commit="eee653d028753459a839b386ca8a96daff476469"
+service_commit="cfb5b2f1030184a7cb3c1c704ec60ae81c986d9d"
+provider_commit="47107f9decf45bd3d85299297642fbe0276d85eb"
 
 if [ -z "$client_contract_root" ]; then
 git config -f .gitmodules --get submodule.company-check-service.path >/dev/null || fail "service submodule missing"
