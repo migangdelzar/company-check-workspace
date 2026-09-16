@@ -44,6 +44,7 @@ grep -Eq 'timeout_seconds=.*COMPOSE_WAIT_TIMEOUT_SECONDS' scripts/compose-wait.s
 for image in COMPANY_CHECK_SERVICE_IMAGE COMPANY_CHECK_PROVIDER_IMAGE POSTGRES_IMAGE REDIS_IMAGE PROMETHEUS_IMAGE MIMIR_IMAGE LOKI_IMAGE TEMPO_IMAGE GRAFANA_IMAGE LOCUST_IMAGE; do
   grep -Eq "^${image}=.*@sha256:" .env.example || fail "${image} is not digest-only in .env.example"
 done
+fi
 
 for client in e2e/verification.bats e2e/provider-failures.bats performance/locustfile.py; do
   [ -f "$client_root/$client" ] || fail "executable client missing: $client"
@@ -66,8 +67,5 @@ for field in cin name registrationDate address isActive; do
   grep -Eq "(^|[^[:alnum:]_])${field}([^[:alnum:]_]|$)" "$client_root/e2e/verification.bats" || fail "canonical field missing from E2E client: $field"
 done
 grep -Eq 'IN_PROGRESS|COMPLETED|FAILED' "$client_root/e2e/verification.bats" || fail "canonical lifecycle statuses missing from E2E client"
-else
-  :
-fi
 
 printf 'workspace contract is valid\n'

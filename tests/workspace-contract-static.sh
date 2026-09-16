@@ -36,4 +36,15 @@ self.client.post("/backend-service", params={"verificationId": "uuid", "query": 
 EOF
 "$validator" --client-contract-root "$fixture"
 
+for invalid_get in '-X GET' '--get'; do
+  invalid_fixture="$(mktemp -d)"
+  cp -R "$fixture/." "$invalid_fixture/"
+  printf 'curl %s /backend-service?verificationId=uuid\\&query=text\n' "$invalid_get" > "$invalid_fixture/e2e/verification.bats"
+  if "$validator" --client-contract-root "$invalid_fixture" >/dev/null 2>&1; then
+    printf 'validator accepted invalid GET form: %s\n' "$invalid_get" >&2
+    exit 1
+  fi
+  rm -rf "$invalid_fixture"
+done
+
 printf 'workspace contract static assertions are present\n'
