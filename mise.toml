@@ -1,6 +1,6 @@
 [env]
 COMPANY_CHECK_SERVICE_COMMIT = "cfb5b2f1030184a7cb3c1c704ec60ae81c986d9d"
-COMPANY_CHECK_PROVIDER_COMMIT = "47107f9decf45bd3d85299297642fbe0276d85eb"
+COMPANY_CHECK_PROVIDER_COMMIT = "71b8140234ec09e1ee26ad42edc3ca7faa340f44"
 
 [tasks.validate]
 description = "Check the workspace contract"
