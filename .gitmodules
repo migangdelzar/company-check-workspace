@@ -1,0 +1,7 @@
+[submodule "company-check-service"]
+	path = company-check-service
+	url = ./company-check-service
+
+[submodule "company-check-provider"]
+	path = company-check-provider
+	url = ./company-check-provider

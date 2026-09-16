@@ -1,0 +1,7 @@
+[env]
+COMPANY_CHECK_SERVICE_COMMIT = "51a87333c11df15f8f6c0f10e9ebb5bef5f09a83"
+COMPANY_CHECK_PROVIDER_COMMIT = "ba38a652a51f1057b733c84f6d6464d6558d5902"
+
+[tasks.validate]
+description = "Check the workspace contract"
+run = "./workspace-validate.sh"
