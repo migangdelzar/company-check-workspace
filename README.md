@@ -50,10 +50,10 @@ The backend submission contract is `POST /backend-service` with required
 `IN_PROGRESS`, `COMPLETED`, or `FAILED`; completed company data uses `cin`,
 `name`, `registrationDate`, `address`, and `isActive`.
 
-The service submodule pointer is intentionally not changed by workspace
-configuration work. To update it, checkout an approved service commit inside
-the service repository, then commit only the parent gitlink as described in
-the update flow below. The same hook applies to the provider submodule.
+The service and provider pointers are pinned to approved child-repository
+commits. Update a child in its own repository first, then commit only the
+resulting parent gitlink as described in the update flow below. Never commit
+service or provider source files into this parent repository.
 
 ## Update flow
 

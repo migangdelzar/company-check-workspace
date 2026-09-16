@@ -7,6 +7,8 @@ grep -Eq 'for client in e2e/verification\.bats e2e/provider-failures\.bats; do' 
 grep -Eq 'for client in e2e/verification\.bats e2e/provider-failures\.bats performance/locustfile\.py; do' "$validator"
 grep -Eq 'canonical field missing from E2E client' "$validator"
 grep -Eq 'self\\.client\\.post' "$validator"
+grep -Fq '@sha256:[0-9a-fA-F]{64}$' "$validator"
+grep -Eq 'provider-api.yaml' "$validator"
 ! grep -Eq 'canonical field missing from executable clients' "$validator"
 
 get_forms='curl -X GET /backend-service
@@ -79,5 +81,18 @@ for invalid_get in '-X GET' '--get'; do
   fi
   rm -rf "$invalid_fixture"
 done
+
+valid_digest='example/image@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+invalid_digest='example/image@sha256:replace-with-approved-digest'
+printf '%s\n' "$valid_digest" | grep -Eq '@sha256:[0-9a-fA-F]{64}$'
+if printf '%s\n' "$invalid_digest" | grep -Eq '@sha256:[0-9a-fA-F]{64}$'; then
+  printf 'digest assertion accepted a placeholder\n' >&2
+  exit 1
+fi
+
+grep -Fq '/free-third-party' ../openapi/provider-api.yaml
+grep -Fq '/premium-third-party' ../openapi/provider-api.yaml
+grep -Fq 'fullAddress' ../openapi/provider-api.yaml
+! grep -Fq '/free/companies' ../openapi/provider-api.yaml
 
 printf 'workspace contract static assertions are present\n'

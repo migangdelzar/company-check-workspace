@@ -14,8 +14,8 @@ if [ "${1:-}" = "--client-contract-root" ]; then
 fi
 client_root="${client_contract_root:-$workspace_root}"
 
-service_commit="cfb5b2f1030184a7cb3c1c704ec60ae81c986d9d"
-provider_commit="47107f9decf45bd3d85299297642fbe0276d85eb"
+service_commit="8d4326b6ea4e656bd9041c510a448491e667faeb"
+provider_commit="f05986155abe78755c4229e5feda7c14df04ebc4"
 
 if [ -z "$client_contract_root" ]; then
 git config -f .gitmodules --get submodule.company-check-service.path >/dev/null || fail "service submodule missing"
@@ -42,7 +42,7 @@ grep -Eq 'timeout_seconds=.*COMPOSE_WAIT_TIMEOUT_SECONDS' scripts/compose-wait.s
 ! grep -R -Eq '(^|[[:space:];])sleep[[:space:]]+[0-9]+' --exclude-dir=.git --exclude='*.lock' . || fail "fixed sleep found in workspace"
 
 for image in COMPANY_CHECK_SERVICE_IMAGE COMPANY_CHECK_PROVIDER_IMAGE POSTGRES_IMAGE REDIS_IMAGE PROMETHEUS_IMAGE MIMIR_IMAGE LOKI_IMAGE TEMPO_IMAGE GRAFANA_IMAGE LOCUST_IMAGE; do
-  grep -Eq "^${image}=.*@sha256:" .env.example || fail "${image} is not digest-only in .env.example"
+  grep -Eq "^${image}=[^#[:space:]]+@sha256:[0-9a-fA-F]{64}$" .env.example || fail "${image} is not a valid immutable digest reference in .env.example"
 done
 fi
 

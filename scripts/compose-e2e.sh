@@ -4,17 +4,19 @@ set -euo pipefail
 workspace_root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 cd "$workspace_root"
 
-: "${COMPANY_CHECK_SERVICE_IMAGE:?set COMPANY_CHECK_SERVICE_IMAGE to an immutable image}"
-: "${COMPANY_CHECK_PROVIDER_IMAGE:?set COMPANY_CHECK_PROVIDER_IMAGE to an immutable image}"
-: "${POSTGRES_IMAGE:?set POSTGRES_IMAGE to an immutable image}"
-: "${REDIS_IMAGE:?set REDIS_IMAGE to an immutable image}"
-
-case "$COMPANY_CHECK_SERVICE_IMAGE $COMPANY_CHECK_PROVIDER_IMAGE $POSTGRES_IMAGE $REDIS_IMAGE" in
-  *:latest*|*replace-with-approved-digest*)
-    printf '%s\n' 'E2E requires approved immutable image references' >&2
+require_digest_image() {
+  local name="$1"
+  local value="$2"
+  [[ "$value" =~ ^[^[:space:]@]+@sha256:[0-9a-fA-F]{64}$ ]] || {
+    printf 'E2E requires %s to be a valid immutable image reference: %s\n' "$name" "$value" >&2
     exit 2
-    ;;
-esac
+  }
+}
+
+require_digest_image COMPANY_CHECK_SERVICE_IMAGE "${COMPANY_CHECK_SERVICE_IMAGE:?set COMPANY_CHECK_SERVICE_IMAGE}"
+require_digest_image COMPANY_CHECK_PROVIDER_IMAGE "${COMPANY_CHECK_PROVIDER_IMAGE:?set COMPANY_CHECK_PROVIDER_IMAGE}"
+require_digest_image POSTGRES_IMAGE "${POSTGRES_IMAGE:?set POSTGRES_IMAGE}"
+require_digest_image REDIS_IMAGE "${REDIS_IMAGE:?set REDIS_IMAGE}"
 
 compose_args=(docker compose)
 api_url="http://127.0.0.1:${COMPANY_CHECK_SERVICE_PORT:-8080}"
