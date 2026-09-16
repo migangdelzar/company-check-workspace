@@ -43,8 +43,8 @@ for client in e2e/verification.bats e2e/provider-failures.bats performance/locus
 done
 
 for client in e2e/verification.bats e2e/provider-failures.bats; do
-  ! grep -Eq -- '--get[[:space:]].*backend-service|/backend-service.*--get' "$client" || fail "stale GET backend endpoint in $client"
-  grep -Eq -- '--request[[:space:]]+POST.*backend-service|backend-service.*--request[[:space:]]+POST' "$client" || fail "POST backend endpoint missing in $client"
+  ! grep -Eq -- '--get[[:space:]].*backend-service|/backend-service.*--get|-X[[:space:]]+GET.*backend-service|backend-service.*-X[[:space:]]+GET' "$client" || fail "stale GET backend endpoint in $client"
+  grep -Eq -- '--request[[:space:]]+POST.*backend-service|backend-service.*--request[[:space:]]+POST|-X[[:space:]]+POST.*backend-service|backend-service.*-X[[:space:]]+POST' "$client" || fail "POST backend endpoint missing in $client"
   grep -Eq -- 'verificationId=' "$client" || fail "verificationId query parameter missing in $client"
   grep -Eq -- 'query=' "$client" || fail "query parameter missing in $client"
 done
