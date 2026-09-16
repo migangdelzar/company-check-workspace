@@ -1,0 +1,33 @@
+openapi: 3.1.1
+info: {title: Company Check Provider API, version: 1.0.0}
+paths:
+  /free-third-party:
+    get:
+      parameters: [{$ref: '#/components/parameters/Query'}]
+      responses: {'200': {description: FREE results, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/FreeCompany'}}}}}, '4XX': {description: Client error}, '5XX': {description: Provider unavailable}}
+  /premium-third-party:
+    get:
+      parameters: [{$ref: '#/components/parameters/Query'}]
+      responses: {'200': {description: PREMIUM results, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/PremiumCompany'}}}}}, '4XX': {description: Client error}, '5XX': {description: Provider unavailable}}
+components:
+  parameters:
+    Query: {name: query, in: query, required: true, schema: {type: string}}
+  schemas:
+    FreeCompany:
+      type: object
+      required: [cin, name, registration_date, address, is_active]
+      properties:
+        cin: {type: string}
+        name: {type: string}
+        registration_date: {type: string, format: date}
+        address: {type: string}
+        is_active: {type: boolean}
+    PremiumCompany:
+      type: object
+      required: [companyIdentificationNumber, companyName, registrationDate, fullAddress, isActive]
+      properties:
+        companyIdentificationNumber: {type: string}
+        companyName: {type: string}
+        registrationDate: {type: string, format: date}
+        fullAddress: {type: string, description: Fixture-compatible PREMIUM address field; mapped to backend address}
+        isActive: {type: boolean}
