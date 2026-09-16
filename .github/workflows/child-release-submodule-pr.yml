@@ -1,0 +1,38 @@
+name: Open child release update PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      service_commit:
+        required: true
+        type: string
+      provider_commit:
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Pin approved child commits
+        run: |
+          git -C company-check-service fetch --depth=1 origin "${{ inputs.service_commit }}"
+          git -C company-check-provider fetch --depth=1 origin "${{ inputs.provider_commit }}"
+          git -C company-check-service checkout --detach "${{ inputs.service_commit }}"
+          git -C company-check-provider checkout --detach "${{ inputs.provider_commit }}"
+          git add company-check-service company-check-provider
+      - name: Open update PR
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: build: update child release submodules
+          title: build: update child release submodules
+          body: Updates the service/provider gitlinks to the approved child release commits.
+          branch: automation/child-release-submodules
