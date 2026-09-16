@@ -4,8 +4,8 @@ set -euo pipefail
 workspace_root="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 cd "$workspace_root"
 
-service_commit="308c0cf"
-provider_commit="96df1ee"
+service_commit="f6eb3ba4949888a83feee3aec87dd5f5981ccfd0"
+provider_commit="5ec1f515fd2fc5ddddd40f70f45f3e2f62752ccd"
 
 fail() { printf 'workspace validation failed: %s\n' "$1" >&2; exit 1; }
 

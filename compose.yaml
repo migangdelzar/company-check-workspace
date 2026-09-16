@@ -35,7 +35,10 @@ services:
       JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:${COMPANY_CHECK_JDWP_TARGET_PORT:-5005}"
   free-provider:
     image: ${COMPANY_CHECK_PROVIDER_IMAGE:?set COMPANY_CHECK_PROVIDER_IMAGE}
-    environment: { PROVIDER_TIER: free, PORT: "3000" }
+    environment:
+      PROVIDER_TIER: free
+      PROVIDER_SCENARIO_FILE: /app/config/scenarios/free.json
+      PORT: "3000"
     networks: [internal]
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3000/health >/dev/null"]
@@ -44,7 +47,10 @@ services:
       retries: 12
   premium-provider:
     image: ${COMPANY_CHECK_PROVIDER_IMAGE:?set COMPANY_CHECK_PROVIDER_IMAGE}
-    environment: { PROVIDER_TIER: premium, PORT: "3000" }
+    environment:
+      PROVIDER_TIER: premium
+      PROVIDER_SCENARIO_FILE: /app/config/scenarios/premium.json
+      PORT: "3000"
     networks: [internal]
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3000/health >/dev/null"]
