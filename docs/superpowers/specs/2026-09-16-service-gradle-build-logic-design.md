@@ -31,7 +31,6 @@ company-check-service/
 │   ├── build.gradle.kts
 │   └── src/main/kotlin/
 │       ├── com.incode.java-conventions.gradle.kts
-│       ├── com.incode.spring-boot-conventions.gradle.kts
 │       ├── com.incode.testing-conventions.gradle.kts
 │       ├── com.incode.quality-conventions.gradle.kts
 │       ├── com.incode.contract-conventions.gradle.kts
@@ -40,10 +39,11 @@ company-check-service/
 └── gradle/libs.versions.toml
 ```
 
-The service applies only `com.incode.service-conventions`. The convention
-plugins compose the core Java/Spring setup, test suites, quality tasks,
-OpenAPI contract task, and image tasks. Service-specific dependency choices
-and provider/image properties remain in the root build.
+The service applies the catalog-backed Spring Boot plugin directly in the root
+build, followed by `com.incode.service-conventions`. The convention plugin
+composes Java, test suites, quality tasks, OpenAPI contract tasks, and image
+tasks. Service-specific dependency choices and provider/image properties remain
+in the root build.
 
 ## Task model
 

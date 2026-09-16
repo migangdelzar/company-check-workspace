@@ -31,14 +31,13 @@ until the local Docker/Colima socket is available.
 - Create: `company-check-service/build-logic/settings.gradle.kts`
 - Create: `company-check-service/build-logic/build.gradle.kts`
 - Create: `company-check-service/build-logic/src/main/kotlin/com.incode.java-conventions.gradle.kts`
-- Create: `company-check-service/build-logic/src/main/kotlin/com.incode.spring-boot-conventions.gradle.kts`
 - Create: `company-check-service/build-logic/src/main/kotlin/com.incode.service-conventions.gradle.kts`
 - Modify: `company-check-service/settings.gradle.kts`
 - Modify: `company-check-service/build.gradle.kts`
 - Test: `company-check-service/src/test/java/com/incode/verification/configuration/GradleStructureTest.java`
 
 **Interfaces:**
-- Produces plugin IDs `com.incode.java-conventions`, `com.incode.spring-boot-conventions`, and `com.incode.service-conventions`.
+- Produces plugin IDs `com.incode.java-conventions` and `com.incode.service-conventions`; Spring Boot is applied directly from the catalog in the root build.
 - `com.incode.service-conventions` applies Java and Spring conventions without changing dependency coordinates.
 
 - [x] **Step 1: Write the failing static structure test.** Assert that `settings.gradle.kts` includes `build-logic`, the convention source files exist, and the root build applies `com.incode.service-conventions`.
