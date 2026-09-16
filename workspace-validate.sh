@@ -24,4 +24,16 @@ for forbidden in .env .env.local company-check-service/.env company-check-provid
   [ ! -e "$forbidden" ] || fail "forbidden file present: $forbidden"
 done
 
+grep -Eq '^  backend:$' compose.yaml || fail "core backend service missing"
+! grep -Eq 'replicas:|mesh|swarm' compose.yaml || fail "deprecated replica or mesh topology present"
+grep -Eq '^    profiles: \[debug\]$' compose.yaml || fail "debug profile missing"
+grep -Eq '^    profiles: \[observability\]$' compose.yaml || fail "observability profile missing"
+grep -Eq '^    profiles: \[performance\]$' compose.yaml || fail "performance profile missing"
+grep -Eq 'timeout_seconds=.*COMPOSE_WAIT_TIMEOUT_SECONDS' scripts/compose-wait.sh || fail "bounded compose polling missing"
+! grep -R -Eq '(^|[[:space:];])sleep[[:space:]]+[0-9]+' --exclude-dir=.git --exclude='*.lock' . || fail "fixed sleep found in workspace"
+
+for image in COMPANY_CHECK_SERVICE_IMAGE COMPANY_CHECK_PROVIDER_IMAGE POSTGRES_IMAGE REDIS_IMAGE PROMETHEUS_IMAGE MIMIR_IMAGE LOKI_IMAGE TEMPO_IMAGE GRAFANA_IMAGE LOCUST_IMAGE; do
+  grep -Eq "^${image}=.*@sha256:" .env.example || fail "${image} is not digest-only in .env.example"
+done
+
 printf 'workspace contract is valid\n'

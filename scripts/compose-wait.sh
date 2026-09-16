@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-deadline=$((SECONDS + \${COMPOSE_WAIT_TIMEOUT_SECONDS:-120}))
+timeout_seconds="${COMPOSE_WAIT_TIMEOUT_SECONDS:-120}"
+deadline=$((SECONDS + timeout_seconds))
 while (( SECONDS < deadline )); do
   status="$(docker compose ps --all --format '{{.Service}} {{.State}} {{.Health}}')"
   case "$status" in

@@ -13,6 +13,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  workspace-gates:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: ./.github/actions/checkout-workspace
+      - name: Check workspace contract and topology gates
+        shell: bash
+        run: ./workspace-validate.sh
+
   changes:
     runs-on: ubuntu-24.04
     outputs:

@@ -1,8 +1,8 @@
-name: \${COMPOSE_PROJECT_NAME:-company-check}
+name: ${COMPOSE_PROJECT_NAME:-company-check}
 services:
   backend:
-    image: \${COMPANY_CHECK_SERVICE_IMAGE:?set COMPANY_CHECK_SERVICE_IMAGE}
-    ports: ["\${COMPANY_CHECK_SERVICE_PORT:-8080}:8080"]
+    image: ${COMPANY_CHECK_SERVICE_IMAGE:?set COMPANY_CHECK_SERVICE_IMAGE}
+    ports: ["${COMPANY_CHECK_SERVICE_PORT:-8080}:8080"]
     networks: [internal]
     depends_on:
       postgres: { condition: service_healthy }
@@ -24,7 +24,7 @@ services:
     environment:
       JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:${COMPANY_CHECK_JDWP_TARGET_PORT:-5005}"
   free-provider:
-    image: \${COMPANY_CHECK_PROVIDER_IMAGE:?set COMPANY_CHECK_PROVIDER_IMAGE}
+    image: ${COMPANY_CHECK_PROVIDER_IMAGE:?set COMPANY_CHECK_PROVIDER_IMAGE}
     environment: { PROVIDER_TIER: free, PORT: "3000" }
     networks: [internal]
     healthcheck:
@@ -42,11 +42,11 @@ services:
       timeout: 3s
       retries: 12
   postgres:
-    image: \${POSTGRES_IMAGE:?set POSTGRES_IMAGE}
+    image: ${POSTGRES_IMAGE:?set POSTGRES_IMAGE}
     environment:
-      POSTGRES_DB: \${COMPANY_CHECK_DB_NAME:-company_check}
-      POSTGRES_USER: \${COMPANY_CHECK_DB_USER:-company_check}
-      POSTGRES_PASSWORD: \${COMPANY_CHECK_DB_PASSWORD:?set a local database password}
+      POSTGRES_DB: ${COMPANY_CHECK_DB_NAME:-company_check}
+      POSTGRES_USER: ${COMPANY_CHECK_DB_USER:-company_check}
+      POSTGRES_PASSWORD: ${COMPANY_CHECK_DB_PASSWORD:?set a local database password}
     networks: [internal]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
@@ -54,7 +54,7 @@ services:
       timeout: 3s
       retries: 12
   redis:
-    image: \${REDIS_IMAGE:?set REDIS_IMAGE}
+    image: ${REDIS_IMAGE:?set REDIS_IMAGE}
     networks: [internal]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]

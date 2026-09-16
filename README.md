@@ -19,6 +19,12 @@ scripts/compose-wait.sh. Stop the stack with scripts/compose-down.sh; it does
 not remove volumes. Image values are inputs because this parent does not own
 the service/provider source repositories.
 
+The workspace contract is single-node: core runs one backend service on one
+internal network, with no replica or service-mesh topology. Debug,
+observability, and performance are opt-in profiles and do not alter core
+topology. Every image input, including profile-only images, must be an
+immutable `@sha256:<digest>` reference.
+
 Observability is opt-in: run `docker compose --profile observability up -d`
 after setting its image and retention values in `.env`. Grafana is exposed on
 `GRAFANA_PORT`; local storage is bounded to 24 hours. The static smoke check is
@@ -32,6 +38,10 @@ pinned `LOCUST_IMAGE`, the version-controlled workload and thresholds in
 `scripts/performance-run.sh`. It waits for the backend healthcheck, then
 removes only Compose containers and the network. JVM heap and native-memory
 values are informational baselines and do not affect the Locust exit status.
+
+CI runs `workspace-validate.sh` as a parent-only gate. It checks pinned
+gitlinks, digest-only example images, topology and profile declarations,
+bounded health polling, and absence of fixed sleeps.
 
 The service submodule pointer is intentionally not changed by workspace
 configuration work. To update it, checkout an approved service commit inside
