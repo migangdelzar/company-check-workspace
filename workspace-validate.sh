@@ -14,7 +14,7 @@ if [ "${1:-}" = "--client-contract-root" ]; then
 fi
 client_root="${client_contract_root:-$workspace_root}"
 
-service_commit="d25df9eaaf6e5e36e7ab76139e3886b27aa4be92"
+service_commit="eb31393e5955f6e3070019ed739749f62328f8a6"
 provider_commit="bc9b906f094541c0e894ae7cfd78ede632e1534a"
 
 if [ -z "$client_contract_root" ]; then
