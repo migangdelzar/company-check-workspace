@@ -8,6 +8,9 @@
 
 **Tech Stack:** Gradle 9.0.0, Kotlin DSL, Java 25, Spring Boot 4.1.1, Spring Modulith 2.1.1, JDBC, PostgreSQL, Redis, Caffeine, Resilience4j, JaCoCo, Spotless, Checkstyle, Testcontainers, Redocly CLI, Docker/Paketo.
 
+**Status:** Implemented. Docker-backed PostgreSQL integration remains pending
+until the local Docker/Colima socket is available.
+
 ## Global Constraints
 
 - Preserve the service HTTP paths, query parameters, status values, DTOs, persistence schema, provider wire contracts, and ports.
@@ -38,11 +41,11 @@
 - Produces plugin IDs `com.incode.java-conventions`, `com.incode.spring-boot-conventions`, and `com.incode.service-conventions`.
 - `com.incode.service-conventions` applies Java and Spring conventions without changing dependency coordinates.
 
-- [ ] **Step 1: Write the failing static structure test.** Assert that `settings.gradle.kts` includes `build-logic`, the convention source files exist, and the root build applies `com.incode.service-conventions`.
-- [ ] **Step 2: Run the focused test and verify it fails** because the included build and plugin files do not yet exist.
-- [ ] **Step 3: Implement the minimal included build and convention plugins.** Use Gradle precompiled script plugins and preserve Java 25, Spotless, Checkstyle, Error Prone, and Spring Boot plugin application.
-- [ ] **Step 4: Run the focused test and `./gradlew help --configuration-cache`**; verify the task exits successfully and the plugin compiles.
-- [ ] **Step 5: Commit** with `build(service): add convention plugin build logic`.
+- [x] **Step 1: Write the failing static structure test.** Assert that `settings.gradle.kts` includes `build-logic`, the convention source files exist, and the root build applies `com.incode.service-conventions`.
+- [x] **Step 2: Run the focused test and verify it fails** because the included build and plugin files do not yet exist.
+- [x] **Step 3: Implement the minimal included build and convention plugins.** Use Gradle precompiled script plugins and preserve Java 25, Spotless, Checkstyle, Error Prone, and Spring Boot plugin application.
+- [x] **Step 4: Run the focused test and `./gradlew help --configuration-cache`**; verify the task exits successfully and the plugin compiles.
+- [x] **Step 5: Commit** with `build(service): add convention plugin build logic`.
 
 ### Task 2: Extract test, quality, and contract conventions
 
@@ -58,11 +61,11 @@
 - Produces `fastCheck`, `qualityGate`, `openApiValidate`, and the existing JVM test suites with unchanged names and behavior.
 - `fastCheck` must not depend on integration/contract/E2E suites, OpenAPI CLI execution, or Docker tasks.
 
-- [ ] **Step 1: Add failing assertions** for task groups, `fastCheck` dependencies, and preservation of `qualityGate`/`openApiValidate`.
-- [ ] **Step 2: Run the focused test** and verify it fails against the monolithic build.
-- [ ] **Step 3: Move test suite, Spotless/Checkstyle, JaCoCo, OpenAPI, and quality task configuration** into the convention plugins; register `fastCheck` under `verification`.
-- [ ] **Step 4: Run `./gradlew tasks`, the focused test, and `./gradlew fastCheck --configuration-cache`**; verify organized groups and zero failures.
-- [ ] **Step 5: Commit** with `refactor(service): organize verification convention plugins`.
+- [x] **Step 1: Add failing assertions** for task groups, `fastCheck` dependencies, and preservation of `qualityGate`/`openApiValidate`.
+- [x] **Step 2: Run the focused test** and verify it fails against the monolithic build.
+- [x] **Step 3: Move test suite, Spotless/Checkstyle, JaCoCo, OpenAPI, and quality task configuration** into the convention plugins; register `fastCheck` under `verification`.
+- [x] **Step 4: Run `./gradlew tasks`, the focused test, and `./gradlew fastCheck --configuration-cache`**; verify organized groups and zero failures.
+- [x] **Step 5: Commit** with `refactor(service): organize verification convention plugins`.
 
 ### Task 3: Extract container/image conventions and remove service command duplication
 
@@ -77,11 +80,11 @@
 - Preserve `image`, `bootBuildImage`, `imageSmoke`, digest validation, JVM/native properties, and bounded smoke polling.
 - No parent `scripts/*.sh` file is deleted or moved by this task.
 
-- [ ] **Step 1: Add a failing static assertion** that image tasks are supplied by the container convention and service `mise.toml` is absent.
-- [ ] **Step 2: Run the focused assertion** and verify it fails before extraction.
-- [ ] **Step 3: Move Paketo/image/imageSmoke logic** into the container convention plugin and remove the service `mise.toml` aliases.
-- [ ] **Step 4: Run `./gradlew tasks`, `./gradlew fastCheck`, and the image task configuration check without invoking Docker**; verify digest properties are still required only for image execution.
-- [ ] **Step 5: Commit** with `refactor(service): centralize container build conventions`.
+- [x] **Step 1: Add a failing static assertion** that image tasks are supplied by the container convention and service `mise.toml` is absent.
+- [x] **Step 2: Run the focused assertion** and verify it fails before extraction.
+- [x] **Step 3: Move Paketo/image/imageSmoke logic** into the container convention plugin and remove the service `mise.toml` aliases.
+- [x] **Step 4: Run `./gradlew tasks`, `./gradlew fastCheck`, and the image task configuration check without invoking Docker**; verify digest properties are still required only for image execution.
+- [x] **Step 5: Commit** with `refactor(service): centralize container build conventions`.
 
 ### Task 4: Audit service contracts and apply only missing requested behavior
 
@@ -94,11 +97,11 @@
 - Lifecycle statuses are exactly `IN_PROGRESS`, `COMPLETED`, and `FAILED`.
 - The provider routes remain `/free-third-party` and `/premium-third-party`.
 
-- [ ] **Step 1: Run focused static and unit checks** over annotations, records/sealed failures, persistence, resilience, cache/coordination, and provider mapping.
-- [ ] **Step 2: If a requirement is missing, write the smallest failing focused test first.**
-- [ ] **Step 3: Implement only the missing behavior** without introducing JPA, framework annotations in domain code, or duplicate validation.
-- [ ] **Step 4: Run the affected tests and `fastCheck`**; refactor while green.
-- [ ] **Step 5: Commit** with `fix(service): align audited contract behavior` only if changes were required.
+- [x] **Step 1: Run focused static and unit checks** over annotations, records/sealed failures, persistence, resilience, cache/coordination, and provider mapping.
+- [x] **Step 2: If a requirement is missing, write the smallest failing focused test first.** No missing behavior was found.
+- [x] **Step 3: Implement only the missing behavior** without introducing JPA, framework annotations in domain code, or duplicate validation. No source changes were required.
+- [x] **Step 4: Run the affected tests and `fastCheck`**; refactor while green.
+- [x] **Step 5: Commit** with `fix(service): align audited contract behavior` only if changes were required. No commit was required.
 
 ### Task 5: Verify child and parent repository contracts
 
@@ -106,18 +109,18 @@
 - Modify: parent gitlink `company-check-service` only after child commits are complete.
 - Do not modify parent-owned service/provider source files directly.
 
-- [ ] **Step 1: Run service `fastCheck` and full `qualityGate` where dependencies are available.**
-- [ ] **Step 2: Run parent `workspace-validate.sh`, shell syntax checks, and available provider checks.**
-- [ ] **Step 3: Separate Docker/Colima-unavailable checks from passing checks.**
-- [ ] **Step 4: Update only the parent service gitlink if the child HEAD changed.**
-- [ ] **Step 5: Commit the parent pointer with `build(workspace): pin organized service build`** if needed.
+- [x] **Step 1: Run service `fastCheck` and full `qualityGate` where dependencies are available.** Fast path passed; qualityGate reached the Docker-backed integration test and was blocked by the local Docker socket.
+- [x] **Step 2: Run parent `workspace-validate.sh`, shell syntax checks, and available provider checks.**
+- [x] **Step 3: Separate Docker/Colima-unavailable checks from passing checks.**
+- [x] **Step 4: Update only the parent service gitlink if the child HEAD changed.**
+- [x] **Step 5: Commit the parent pointer with `build(workspace): pin organized service build`** if needed.
 
 ## Definition of Done
 
-- [ ] `build-logic` is an included build with focused convention plugins.
-- [ ] Root service build is reduced to service-specific declarations.
-- [ ] `fastCheck` is fast and excludes external-service/container validation.
-- [ ] Full `qualityGate` and 80% focused JaCoCo gate remain available.
-- [ ] Service `mise.toml` duplication is removed; parent Compose scripts remain.
-- [ ] Requested service contracts are verified with evidence.
-- [ ] All changed files are committed in logical commits.
+- [x] `build-logic` is an included build with focused convention plugins.
+- [x] Root service build is reduced to service-specific declarations.
+- [x] `fastCheck` is fast and excludes external-service/container validation.
+- [x] Full `qualityGate` and 80% focused JaCoCo gate remain available.
+- [x] Service `mise.toml` duplication is removed; parent Compose scripts remain.
+- [x] Requested service contracts are verified with evidence.
+- [x] All changed files are committed in logical commits.
