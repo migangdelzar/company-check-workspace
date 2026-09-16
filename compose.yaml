@@ -3,6 +3,16 @@ services:
   backend:
     image: ${COMPANY_CHECK_SERVICE_IMAGE:?set COMPANY_CHECK_SERVICE_IMAGE}
     ports: ["${COMPANY_CHECK_SERVICE_PORT:-8080}:8080"]
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/${COMPANY_CHECK_DB_NAME:-company_check}"
+      SPRING_DATASOURCE_USERNAME: "${COMPANY_CHECK_DB_USER:-company_check}"
+      SPRING_DATASOURCE_PASSWORD: "${COMPANY_CHECK_DB_PASSWORD:?set a local database password}"
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      VERIFICATION_FREE_BASE_URL: http://free-provider:3000
+      VERIFICATION_FREE_PATH: "/free-third-party?query={query}"
+      VERIFICATION_PREMIUM_BASE_URL: http://premium-provider:3000
+      VERIFICATION_PREMIUM_PATH: "/premium-third-party?query={query}"
     networks: [internal]
     depends_on:
       postgres: { condition: service_healthy }
@@ -33,7 +43,7 @@ services:
       timeout: 3s
       retries: 12
   premium-provider:
-    image: \${COMPANY_CHECK_PROVIDER_IMAGE:?set COMPANY_CHECK_PROVIDER_IMAGE}
+    image: ${COMPANY_CHECK_PROVIDER_IMAGE:?set COMPANY_CHECK_PROVIDER_IMAGE}
     environment: { PROVIDER_TIER: premium, PORT: "3000" }
     networks: [internal]
     healthcheck:
