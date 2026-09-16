@@ -1,9 +1,14 @@
 openapi: 3.1.1
-info: {title: Company Check Backend API, version: 1.0.0}
-servers: [{url: http://localhost:8080}]
+info:
+  title: Company Check Backend API
+  version: 1.0.0
+  license: {name: Proprietary, url: https://www.incode.com/}
+servers: [{url: /}]
+security: []
 paths:
   /backend-service:
-    get:
+    post:
+      operationId: submitVerification
       parameters:
         - {$ref: '#/components/parameters/VerificationId'}
         - {$ref: '#/components/parameters/Query'}
@@ -15,6 +20,7 @@ paths:
         '503': {$ref: '#/components/responses/Problem503'}
   /verifications/{verificationId}:
     get:
+      operationId: retrieveVerification
       parameters: [{$ref: '#/components/parameters/VerificationIdPath'}]
       responses:
         '200': {description: Stored verification, content: {application/json: {schema: {$ref: '#/components/schemas/VerificationResponse'}}}}
@@ -31,16 +37,19 @@ components:
       properties:
         verificationId: {type: string, format: uuid}
         query: {type: string}
-        status: {type: string, enum: [IN_PROGRESS, MATCH, NO_MATCH, FAILED]}
+        status: {type: string, enum: [IN_PROGRESS, COMPLETED, FAILED]}
+        normalizedQuery: {type: string}
+        startedAt: {type: string, format: date-time}
+        expiresAt: {type: string, format: date-time}
         reason: {type: string, enum: [PROVIDERS_UNAVAILABLE, PROVIDER_CLIENT_ERROR, VERIFICATION_EXPIRED]}
         company: {$ref: '#/components/schemas/Company'}
         otherResults: {type: array, items: {$ref: '#/components/schemas/Company'}}
     Company:
       type: object
-      required: [companyIdentificationNumber, companyName, registrationDate, address, isActive]
+      required: [cin, name, registrationDate, address, isActive]
       properties:
-        companyIdentificationNumber: {type: string}
-        companyName: {type: string}
+        cin: {type: string}
+        name: {type: string}
         registrationDate: {type: string, format: date}
         address: {type: string}
         isActive: {type: boolean}
