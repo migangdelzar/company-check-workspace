@@ -32,9 +32,30 @@ curl -X POST /backend-service?verificationId=uuid\&query=text
 cin name registrationDate address isActive IN_PROGRESS COMPLETED FAILED
 EOF
 cat > "$fixture/performance/locustfile.py" <<'EOF'
-self.client.post("/backend-service", params={"verificationId": "uuid", "query": "text"})
+self.client.post(
+    "/backend-service",
+    params={"verificationId": "uuid", "query": "text"},
+)
 EOF
 "$validator" --client-contract-root "$fixture"
+
+invalid_locust_fixture="$(mktemp -d)"
+cp -R "$fixture/." "$invalid_locust_fixture/"
+cat >> "$invalid_locust_fixture/performance/locustfile.py" <<'EOF'
+self.client.get(
+    "/backend-service",
+)
+EOF
+invalid_output="$($validator --client-contract-root "$invalid_locust_fixture" 2>&1 || true)"
+if ! printf '%s\n' "$invalid_output" | grep -Fq 'workspace validation failed: stale Locust GET backend endpoint'; then
+  printf 'validator did not reject stale multiline Locust GET specifically:\n%s\n' "$invalid_output" >&2
+  exit 1
+fi
+if "$validator" --client-contract-root "$invalid_locust_fixture" >/dev/null 2>&1; then
+  printf 'validator accepted stale multiline Locust GET\n' >&2
+  exit 1
+fi
+rm -rf "$invalid_locust_fixture"
 
 for invalid_get in '-X GET' '--get'; do
   invalid_fixture="$(mktemp -d)"

@@ -59,9 +59,11 @@ for client in e2e/verification.bats e2e/provider-failures.bats; do
   grep -Eq -- 'query=' "$client_root/$client" || fail "query parameter missing in $client"
 done
 
-grep -Eq 'self\.client\.post\([[:space:]]*"/backend-service"' "$client_root/performance/locustfile.py" || fail "Locust POST backend endpoint missing"
+grep -Eq 'self\.client\.post\(' "$client_root/performance/locustfile.py" || fail "Locust POST backend endpoint missing"
+grep -Eq '"/backend-service"' "$client_root/performance/locustfile.py" || fail "Locust POST backend endpoint missing"
 grep -Eq 'params=.*verificationId.*query|params=.*query.*verificationId' "$client_root/performance/locustfile.py" || fail "Locust backend query parameters missing"
-! grep -Eq 'self\.client\.get\([[:space:]]*"/backend-service"' "$client_root/performance/locustfile.py" || fail "stale Locust GET backend endpoint"
+! perl -0ne 'exit(/self\.client\.get\([^)]*"\/backend-service"/s ? 0 : 1)' \
+  "$client_root/performance/locustfile.py" || fail "stale Locust GET backend endpoint"
 
 for field in cin name registrationDate address isActive; do
   grep -Eq "(^|[^[:alnum:]_])${field}([^[:alnum:]_]|$)" "$client_root/e2e/verification.bats" || fail "canonical field missing from E2E client: $field"
