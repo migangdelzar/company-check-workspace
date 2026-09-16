@@ -22,14 +22,30 @@ jobs:
     environment: production-release
     steps:
       - uses: actions/checkout@v4
-        with:
-          sparse-checkout: scripts
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Promote service without rebuilding
-        run: scripts/promote-image.sh "${{ inputs.service_source }}" "ghcr.io/${{ github.repository_owner }}/company-check-service:stable"
+        env:
+          SOURCE_IMAGE: ${{ inputs.service_source }}
+          TARGET_IMAGE: ghcr.io/${{ github.repository_owner }}/company-check-service:stable
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_IMAGE" =~ ^[^[:space:]@]+@sha256:[0-9a-fA-F]{64}$ ]]
+          actual="$(docker buildx imagetools inspect "$SOURCE_IMAGE" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+          expected="${SOURCE_IMAGE##*@}"
+          test "$actual" = "$expected"
+          crane copy "$SOURCE_IMAGE" "$TARGET_IMAGE"
       - name: Promote provider without rebuilding
-        run: scripts/promote-image.sh "${{ inputs.provider_source }}" "ghcr.io/${{ github.repository_owner }}/company-check-provider:stable"
+        env:
+          SOURCE_IMAGE: ${{ inputs.provider_source }}
+          TARGET_IMAGE: ghcr.io/${{ github.repository_owner }}/company-check-provider:stable
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_IMAGE" =~ ^[^[:space:]@]+@sha256:[0-9a-fA-F]{64}$ ]]
+          actual="$(docker buildx imagetools inspect "$SOURCE_IMAGE" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+          expected="${SOURCE_IMAGE##*@}"
+          test "$actual" = "$expected"
+          crane copy "$SOURCE_IMAGE" "$TARGET_IMAGE"

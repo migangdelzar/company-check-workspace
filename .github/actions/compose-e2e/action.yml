@@ -17,11 +17,26 @@ runs:
   using: composite
   steps:
     - uses: ./.github/actions/checkout-workspace
-    - name: Run digest-based E2E
+    - name: Start and verify the Compose stack
       shell: bash
       env:
         COMPANY_CHECK_SERVICE_IMAGE: ${{ inputs.service-image }}
         COMPANY_CHECK_PROVIDER_IMAGE: ${{ inputs.provider-image }}
         POSTGRES_IMAGE: ${{ inputs.postgres-image }}
         REDIS_IMAGE: ${{ inputs.redis-image }}
-      run: ./scripts/compose-e2e.sh
+      run: |
+        set -euo pipefail
+        docker compose up -d
+        cleanup() { docker compose down >/dev/null 2>&1 || true; }
+        trap cleanup EXIT
+        timeout_seconds="${COMPOSE_WAIT_TIMEOUT_SECONDS:-120}"
+        deadline=$((SECONDS + timeout_seconds))
+        while (( SECONDS < deadline )); do
+          status="$(docker compose ps --all --format '{{.Service}} {{.State}} {{.Health}}')"
+          case "$status" in
+            *" exited "*|*" dead "*) printf '%s\n' "$status" >&2; exit 1 ;;
+          esac
+          [[ "$status" == *"backend running healthy"* ]] && exit 0
+        done
+        docker compose ps --all
+        exit 1

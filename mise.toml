@@ -5,8 +5,24 @@ colima = "0.8.1"
 
 [env]
 COMPANY_CHECK_SERVICE_COMMIT = "c1525383c3e9a975d893e30fc3192eac21587633"
-COMPANY_CHECK_PROVIDER_COMMIT = "bc9b906f094541c0e894ae7cfd78ede632e1534a"
+COMPANY_CHECK_PROVIDER_COMMIT = "f23d82b3ba590ded39dc7b79d8d38030dde49774"
 
 [tasks.validate]
-description = "Check the workspace contract"
-run = "./workspace-validate.sh"
+description = "Run the service fast verification gate"
+run = "company-check-service/gradlew fastCheck"
+
+[tasks.service-full]
+description = "Run the complete service verification gate"
+run = "company-check-service/gradlew qualityGate"
+
+[tasks.provider-quality]
+description = "Run provider formatting, type, lint and test checks"
+run = "cd company-check-provider && bun run quality"
+
+[tasks.compose-up]
+description = "Start the core Compose stack"
+run = "docker compose up -d"
+
+[tasks.compose-down]
+description = "Stop the Compose stack"
+run = "docker compose down"

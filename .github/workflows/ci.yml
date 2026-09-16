@@ -18,8 +18,8 @@ jobs:
     steps:
       - uses: ./.github/actions/checkout-workspace
       - name: Check workspace contract and topology gates
-        shell: bash
-        run: ./workspace-validate.sh
+        working-directory: company-check-service
+        run: ./gradlew fastCheck
 
   changes:
     runs-on: ubuntu-24.04
@@ -38,7 +38,7 @@ jobs:
           matches() { printf '%s\n' "$changed" | grep -Eq "$1"; }
           printf 'service=%s\n' "$(matches '^(company-check-service/|\.github/workflows/component-quality\.yml)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
           printf 'provider=%s\n' "$(matches '^(company-check-provider/|\.github/workflows/component-quality\.yml)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          printf 'e2e=%s\n' "$(matches '^(compose\.yaml|e2e/|scripts/compose-|\.env\.example|\.github/(actions/compose-e2e|workflows/(e2e|ci)\.yml))' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          printf 'e2e=%s\n' "$(matches '^(compose\.yaml|\.env\.example|performance/|\.github/(actions/compose-e2e|workflows/(e2e|ci)\.yml))' && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
   components:
     needs: changes
