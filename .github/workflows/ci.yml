@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workspace-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      service: ${{ steps.paths.outputs.service }}
+      provider: ${{ steps.paths.outputs.provider }}
+      e2e: ${{ steps.paths.outputs.e2e }}
+    steps:
+      - uses: ./.github/actions/checkout-workspace
+      - id: paths
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          changed="$(git diff --name-only "$BASE_SHA" "$GITHUB_SHA")"
+          matches() { printf '%s\n' "$changed" | grep -Eq "$1"; }
+          printf 'service=%s\n' "$(matches '^(company-check-service/|\.github/workflows/component-quality\.yml)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          printf 'provider=%s\n' "$(matches '^(company-check-provider/|\.github/workflows/component-quality\.yml)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          printf 'e2e=%s\n' "$(matches '^(compose\.yaml|e2e/|scripts/compose-|\.env\.example|\.github/(actions/compose-e2e|workflows/(e2e|ci)\.yml))' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+  components:
+    needs: changes
+    if: needs.changes.outputs.service == 'true' || needs.changes.outputs.provider == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [service, provider]
+    uses: ./.github/workflows/component-quality.yml
+    with:
+      component: ${{ matrix.component }}
+
+  e2e:
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true'
+    uses: ./.github/workflows/e2e.yml
+    with:
+      service-image: ${{ vars.COMPANY_CHECK_SERVICE_IMAGE }}
+      provider-image: ${{ vars.COMPANY_CHECK_PROVIDER_IMAGE }}
+      postgres-image: ${{ vars.POSTGRES_IMAGE }}
+      redis-image: ${{ vars.REDIS_IMAGE }}

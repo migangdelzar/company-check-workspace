@@ -1,0 +1,27 @@
+name: Compose E2E
+description: Run workspace E2E against explicitly supplied immutable image digests
+inputs:
+  service-image:
+    description: Immutable service image reference
+    required: true
+  provider-image:
+    description: Immutable provider image reference
+    required: true
+  postgres-image:
+    description: Immutable PostgreSQL image reference
+    required: true
+  redis-image:
+    description: Immutable Redis image reference
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/checkout-workspace
+    - name: Run digest-based E2E
+      shell: bash
+      env:
+        COMPANY_CHECK_SERVICE_IMAGE: ${{ inputs.service-image }}
+        COMPANY_CHECK_PROVIDER_IMAGE: ${{ inputs.provider-image }}
+        POSTGRES_IMAGE: ${{ inputs.postgres-image }}
+        REDIS_IMAGE: ${{ inputs.redis-image }}
+      run: ./scripts/compose-e2e.sh

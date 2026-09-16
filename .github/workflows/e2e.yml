@@ -1,0 +1,35 @@
+name: Workspace E2E
+
+on:
+  workflow_call:
+    inputs:
+      service-image:
+        required: true
+        type: string
+      provider-image:
+        required: true
+        type: string
+      postgres-image:
+        required: true
+        type: string
+      redis-image:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workspace-e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: ./.github/actions/compose-e2e
+        with:
+          service-image: ${{ inputs.service-image }}
+          provider-image: ${{ inputs.provider-image }}
+          postgres-image: ${{ inputs.postgres-image }}
+          redis-image: ${{ inputs.redis-image }}

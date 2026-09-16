@@ -1,0 +1,35 @@
+name: Component quality
+
+on:
+  workflow_call:
+    inputs:
+      component:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [service, provider]
+    if: inputs.component == matrix.component
+    steps:
+      - uses: ./.github/actions/checkout-workspace
+
+      - name: Check service
+        if: matrix.component == 'service'
+        working-directory: company-check-service
+        run: ./gradlew check
+
+      - name: Check provider
+        if: matrix.component == 'provider'
+        working-directory: company-check-provider
+        run: |
+          bun install --frozen-lockfile
+          bun run quality
+          bun run test:contract
