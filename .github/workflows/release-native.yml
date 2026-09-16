@@ -30,11 +30,3 @@ jobs:
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/company-check-service:native-${{ github.sha }}-amd64
           provenance: false
-      - name: SBOM placeholder
-        run: echo 'TODO: attach approved SBOM attestation'
-      - name: Provenance placeholder
-        run: echo 'TODO: attach approved provenance attestation'
-      - name: Signature placeholder
-        run: echo 'TODO: sign image with the release identity'
-      - name: Scan placeholder
-        run: echo 'TODO: run the approved vulnerability scanner'

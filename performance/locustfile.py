@@ -8,10 +8,10 @@ class CompanyCheckUser(HttpUser):
 
     @task(4)
     def check_company(self):
-        self.client.get(
+        self.client.post(
             "/backend-service",
             params={"verificationId": str(uuid.uuid4()), "query": "Acme"},
-            name="GET /backend-service",
+            name="POST /backend-service",
         )
 
     @task(1)

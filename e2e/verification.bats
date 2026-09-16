@@ -12,30 +12,31 @@ for part in path: value=value[int(part)] if isinstance(value,list) else value[pa
 print(json.dumps(value) if isinstance(value,(dict,list)) else value)' "$1"
 }
 
-submit() { curl --silent --show-error --fail-with-body --get "$COMPANY_CHECK_API_URL/backend-service" --data-urlencode "verificationId=$1" --data-urlencode "query=$2"; }
+submit() { curl --silent --show-error --fail-with-body --request POST "$COMPANY_CHECK_API_URL/backend-service" --data-urlencode "verificationId=$1" --data-urlencode "query=$2"; }
 
 @test "successful FREE match returns exact canonical PDF fields" {
   run submit "$verification_id" "acme"
   [ "$status" -eq 0 ]
-  [ "$(printf '%s' "$output" | json_field status)" = MATCH ]
-  [ "$(printf '%s' "$output" | json_field company.companyIdentificationNumber)" != "" ]
-  [ "$(printf '%s' "$output" | json_field company.companyName)" != "" ]
+  [ "$(printf '%s' "$output" | json_field status)" = COMPLETED ]
+  [ "$(printf '%s' "$output" | json_field company.cin)" != "" ]
+  [ "$(printf '%s' "$output" | json_field company.name)" != "" ]
   [ "$(printf '%s' "$output" | json_field company.registrationDate)" != "" ]
   [ "$(printf '%s' "$output" | json_field company.address)" != "" ]
   [ "$(printf '%s' "$output" | json_field company.isActive)" = true ]
 }
 
-@test "no result is terminal NO_MATCH" {
+@test "no result is a completed response without a company" {
   run submit "$verification_id" "definitely-no-company-match"
   [ "$status" -eq 0 ]
-  [ "$(printf '%s' "$output" | json_field status)" = NO_MATCH ]
+  [ "$(printf '%s' "$output" | json_field status)" = COMPLETED ]
+  [ "$(printf '%s' "$output" | json_field company)" = null ]
 }
 
 @test "multiple active matches return company and otherResults" {
   run submit "$verification_id" "multiple-active"
   [ "$status" -eq 0 ]
-  [ "$(printf '%s' "$output" | json_field status)" = MATCH ]
-  [ "$(printf '%s' "$output" | json_field otherResults.0.companyIdentificationNumber)" != "" ]
+  [ "$(printf '%s' "$output" | json_field status)" = COMPLETED ]
+  [ "$(printf '%s' "$output" | json_field otherResults.0.cin)" != "" ]
 }
 
 @test "same completed verification replays without a new provider lookup" {
@@ -49,7 +50,7 @@ submit() { curl --silent --show-error --fail-with-body --get "$COMPANY_CHECK_API
 
 @test "same ID with a different normalized query is rejected" {
   submit "$verification_id" "acme" >/dev/null
-  run curl --silent --show-error --output - --write-out $'\n%{http_code}' --get "$COMPANY_CHECK_API_URL/backend-service" --data-urlencode "verificationId=$verification_id" --data-urlencode query="other"
+  run curl --silent --show-error --output - --write-out $'\n%{http_code}' --request POST "$COMPANY_CHECK_API_URL/backend-service" --data-urlencode "verificationId=$verification_id" --data-urlencode query="other"
   [ "${output##*$'\n'}" = 409 ]
   [[ "$output" == *VERIFICATION_ID_REUSE* ]]
 }

@@ -41,7 +41,14 @@ values are informational baselines and do not affect the Locust exit status.
 
 CI runs `workspace-validate.sh` as a parent-only gate. It checks pinned
 gitlinks, digest-only example images, topology and profile declarations,
-bounded health polling, and absence of fixed sleeps.
+bounded health polling, absence of fixed sleeps, and that executable E2E and
+performance clients use the approved POST endpoint and canonical response
+contract.
+
+The backend submission contract is `POST /backend-service` with required
+`verificationId` and `query` query parameters. Results use lifecycle statuses
+`IN_PROGRESS`, `COMPLETED`, or `FAILED`; completed company data uses `cin`,
+`name`, `registrationDate`, `address`, and `isActive`.
 
 The service submodule pointer is intentionally not changed by workspace
 configuration work. To update it, checkout an approved service commit inside
