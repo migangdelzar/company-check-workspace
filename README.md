@@ -24,6 +24,15 @@ after setting its image and retention values in `.env`. Grafana is exposed on
 `GRAFANA_PORT`; local storage is bounded to 24 hours. The static smoke check is
 `scripts/observability-smoke.sh`.
 
+Debug and performance tooling are opt-in. Debug starts a second backend with
+HTTP on `COMPANY_CHECK_DEBUG_PORT` and JDWP on `COMPANY_CHECK_JDWP_PORT`:
+`docker compose --profile debug up -d backend-debug`. Performance uses the
+pinned `LOCUST_IMAGE`, the version-controlled workload and thresholds in
+`performance/scenarios.env`, and writes HTML/CSV/log artifacts before cleanup:
+`scripts/performance-run.sh`. It waits for the backend healthcheck, then
+removes only Compose containers and the network. JVM heap and native-memory
+values are informational baselines and do not affect the Locust exit status.
+
 The service submodule pointer is intentionally not changed by workspace
 configuration work. To update it, checkout an approved service commit inside
 the service repository, then commit only the parent gitlink as described in

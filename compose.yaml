@@ -14,6 +14,15 @@ services:
       interval: 5s
       timeout: 3s
       retries: 12
+  backend-debug:
+    extends:
+      service: backend
+    profiles: [debug]
+    ports:
+      - "${COMPANY_CHECK_DEBUG_PORT:-8081}:8080"
+      - "${COMPANY_CHECK_JDWP_PORT:-5005}:5005"
+    environment:
+      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:${COMPANY_CHECK_JDWP_TARGET_PORT:-5005}"
   free-provider:
     image: \${COMPANY_CHECK_PROVIDER_IMAGE:?set COMPANY_CHECK_PROVIDER_IMAGE}
     environment: { PROVIDER_TIER: free, PORT: "3000" }
@@ -85,6 +94,15 @@ services:
     volumes: [grafana-data:/var/lib/grafana, ./observability/grafana/provisioning:/etc/grafana/provisioning:ro, ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro]
     networks: [internal]
     depends_on: [prometheus, mimir, loki, tempo]
+  locust:
+    image: ${LOCUST_IMAGE:?set LOCUST_IMAGE}
+    profiles: [performance]
+    command: ["-f", "/mnt/performance/locustfile.py", "--host", "http://backend:8080"]
+    volumes:
+      - ./performance:/mnt/performance:ro
+      - ${PERFORMANCE_ARTIFACTS_DIR:-.performance-artifacts}:/mnt/artifacts
+    networks: [internal]
+    depends_on: { backend: { condition: service_healthy } }
 networks:
   internal: { internal: true }
 volumes:
