@@ -39,7 +39,19 @@ EOF
 for invalid_get in '-X GET' '--get'; do
   invalid_fixture="$(mktemp -d)"
   cp -R "$fixture/." "$invalid_fixture/"
-  printf 'curl %s /backend-service?verificationId=uuid\\&query=text\n' "$invalid_get" > "$invalid_fixture/e2e/verification.bats"
+  case "$invalid_get" in
+    '-X GET') sed -i '' '2s/-X POST/-X GET/' "$invalid_fixture/e2e/verification.bats" ;;
+    '--get') sed -i '' '1s/--request POST/--get/' "$invalid_fixture/e2e/verification.bats" ;;
+  esac
+  invalid_output="$($validator --client-contract-root "$invalid_fixture" 2>&1 || true)"
+  if ! printf '%s\n' "$invalid_output" | grep -Fq 'workspace validation failed: stale GET backend endpoint in e2e/verification.bats'; then
+    printf 'validator did not reject invalid GET form specifically: %s\n%s\n' "$invalid_get" "$invalid_output" >&2
+    exit 1
+  fi
+  if [ "$(grep -Ec -- '--get|-X GET' "$invalid_fixture/e2e/verification.bats")" -ne 1 ]; then
+    printf 'invalid fixture did not contain exactly one mutated GET form: %s\n' "$invalid_get" >&2
+    exit 1
+  fi
   if "$validator" --client-contract-root "$invalid_fixture" >/dev/null 2>&1; then
     printf 'validator accepted invalid GET form: %s\n' "$invalid_get" >&2
     exit 1
