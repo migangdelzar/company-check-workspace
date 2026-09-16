@@ -12,6 +12,18 @@ the parent records only their pinned commits and workspace-level configuration.
 - `.env.example` — safe local defaults
 - `workspace-validate.sh` — source-level contract checks
 
+## Compose lifecycle
+
+Set approved image digests in .env, then use scripts/compose-up.sh followed by
+scripts/compose-wait.sh. Stop the stack with scripts/compose-down.sh; it does
+not remove volumes. Image values are inputs because this parent does not own
+the service/provider source repositories.
+
+The service submodule pointer is intentionally not changed by workspace
+configuration work. To update it, checkout an approved service commit inside
+the service repository, then commit only the parent gitlink as described in
+the update flow below. The same hook applies to the provider submodule.
+
 ## Update flow
 
 Update a submodule in its own repository, commit and push that repository, then
