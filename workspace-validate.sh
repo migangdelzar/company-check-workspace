@@ -14,8 +14,8 @@ if [ "${1:-}" = "--client-contract-root" ]; then
 fi
 client_root="${client_contract_root:-$workspace_root}"
 
-service_commit="8d4326b6ea4e656bd9041c510a448491e667faeb"
-provider_commit="f05986155abe78755c4229e5feda7c14df04ebc4"
+service_commit="8f137ebf1779004725a6d29adae964d171d8cf96"
+provider_commit="b2f31206ae538f09aaad97aace3e2f4f547dcb84"
 
 if [ -z "$client_contract_root" ]; then
 git config -f .gitmodules --get submodule.company-check-service.path >/dev/null || fail "service submodule missing"
@@ -38,12 +38,19 @@ grep -Eq '^  backend:$' compose.yaml || fail "core backend service missing"
 grep -Eq '^    profiles: \[debug\]$' compose.yaml || fail "debug profile missing"
 grep -Eq '^    profiles: \[observability\]$' compose.yaml || fail "observability profile missing"
 grep -Eq '^    profiles: \[performance\]$' compose.yaml || fail "performance profile missing"
+test -x scripts/compose-command.sh || fail "central Compose command wrapper missing"
+! grep -R -Eq 'docker compose|docker-compose' scripts --exclude='compose-command.sh' || fail "Compose command bypasses central wrapper"
 grep -Eq 'timeout_seconds=.*COMPOSE_WAIT_TIMEOUT_SECONDS' scripts/compose-wait.sh || fail "bounded compose polling missing"
 ! grep -R -Eq '(^|[[:space:];])sleep[[:space:]]+[0-9]+' --exclude-dir=.git --exclude='*.lock' . || fail "fixed sleep found in workspace"
 
 for image in COMPANY_CHECK_SERVICE_IMAGE COMPANY_CHECK_PROVIDER_IMAGE POSTGRES_IMAGE REDIS_IMAGE PROMETHEUS_IMAGE MIMIR_IMAGE LOKI_IMAGE TEMPO_IMAGE GRAFANA_IMAGE LOCUST_IMAGE; do
   grep -Eq "^${image}=[^#[:space:]]+@sha256:[0-9a-fA-F]{64}$" .env.example || fail "${image} is not a valid immutable digest reference in .env.example"
 done
+
+test -f openapi/provider-api.yaml || fail "provider OpenAPI contract missing"
+grep -Fq '/free-third-party:' openapi/provider-api.yaml || fail "FREE provider route missing from contract"
+grep -Fq '/premium-third-party:' openapi/provider-api.yaml || fail "PREMIUM provider route missing from contract"
+grep -Fq 'fullAddress' openapi/provider-api.yaml || fail "PREMIUM fullAddress field missing from contract"
 fi
 
 for client in e2e/verification.bats e2e/provider-failures.bats performance/locustfile.py; do

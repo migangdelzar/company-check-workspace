@@ -10,6 +10,7 @@ cd "$workspace_root"
 : "${LOCUST_IMAGE:?set LOCUST_IMAGE to a pinned immutable image}"
 
 artifacts="${PERFORMANCE_ARTIFACTS_DIR:-$workspace_root/.performance-artifacts}"
+compose=("$workspace_root/scripts/compose-command.sh")
 mkdir -p "$artifacts"
 set -a
 . "${PERFORMANCE_SCENARIOS_FILE:-$workspace_root/performance/scenarios.env}"
@@ -18,16 +19,16 @@ set +a
 status=0
 cleanup() {
   status=$?
-  docker compose --profile performance logs --no-color >"$artifacts/compose.log" 2>&1 || true
-  docker compose --profile performance ps --all >"$artifacts/compose-ps.txt" 2>&1 || true
-  docker compose --profile performance down >/dev/null 2>&1 || true
+  "${compose[@]}" --profile performance logs --no-color >"$artifacts/compose.log" 2>&1 || true
+  "${compose[@]}" --profile performance ps --all >"$artifacts/compose-ps.txt" 2>&1 || true
+  "${compose[@]}" --profile performance down >/dev/null 2>&1 || true
   exit "$status"
 }
 trap cleanup EXIT INT TERM
 
-docker compose --profile performance up -d
+"${compose[@]}" --profile performance up -d
 "$workspace_root/scripts/compose-wait.sh"
-docker compose --profile performance run --rm locust \
+"${compose[@]}" --profile performance run --rm locust \
   --headless --users "$PERFORMANCE_USERS" --spawn-rate "$PERFORMANCE_SPAWN_RATE" \
   --run-time "$PERFORMANCE_DURATION" --only-summary \
   --html /mnt/artifacts/report.html --csv /mnt/artifacts/locust

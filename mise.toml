@@ -1,6 +1,11 @@
+[tools]
+docker = "27.5.1"
+docker-compose = "2.35.1"
+colima = "0.8.1"
+
 [env]
-COMPANY_CHECK_SERVICE_COMMIT = "cfb5b2f1030184a7cb3c1c704ec60ae81c986d9d"
-COMPANY_CHECK_PROVIDER_COMMIT = "71b8140234ec09e1ee26ad42edc3ca7faa340f44"
+COMPANY_CHECK_SERVICE_COMMIT = "8f137ebf1779004725a6d29adae964d171d8cf96"
+COMPANY_CHECK_PROVIDER_COMMIT = "b2f31206ae538f09aaad97aace3e2f4f547dcb84"
 
 [tasks.validate]
 description = "Check the workspace contract"

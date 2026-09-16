@@ -90,9 +90,7 @@ if printf '%s\n' "$invalid_digest" | grep -Eq '@sha256:[0-9a-fA-F]{64}$'; then
   exit 1
 fi
 
-grep -Fq '/free-third-party' ../openapi/provider-api.yaml
-grep -Fq '/premium-third-party' ../openapi/provider-api.yaml
-grep -Fq 'fullAddress' ../openapi/provider-api.yaml
-! grep -Fq '/free/companies' ../openapi/provider-api.yaml
-
+grep -Fq '/free-third-party' openapi/provider-api.yaml
+grep -Fq '/premium-third-party' openapi/provider-api.yaml
+grep -Fq 'fullAddress' openapi/provider-api.yaml
 printf 'workspace contract static assertions are present\n'

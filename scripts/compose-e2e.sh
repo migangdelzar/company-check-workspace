@@ -18,7 +18,7 @@ require_digest_image COMPANY_CHECK_PROVIDER_IMAGE "${COMPANY_CHECK_PROVIDER_IMAG
 require_digest_image POSTGRES_IMAGE "${POSTGRES_IMAGE:?set POSTGRES_IMAGE}"
 require_digest_image REDIS_IMAGE "${REDIS_IMAGE:?set REDIS_IMAGE}"
 
-compose_args=(docker compose)
+compose_args=("$workspace_root/scripts/compose-command.sh")
 api_url="http://127.0.0.1:${COMPANY_CHECK_SERVICE_PORT:-8080}"
 artifacts="${COMPOSE_E2E_ARTIFACTS_DIR:-$workspace_root/.e2e-artifacts}"
 
