@@ -38,14 +38,23 @@ done
 
 for client in e2e/verification.bats e2e/provider-failures.bats performance/locustfile.py; do
   [ -f "$client" ] || fail "executable client missing: $client"
-  ! grep -Eq 'GET[[:space:]]+[^" ]*/backend-service|--get[[:space:]].*backend-service|/backend-service.*GET' "$client" || fail "stale GET backend endpoint in $client"
-  ! grep -Eq 'NO_MATCH|[^A-Z_]MATCH[^A-Z_]' "$client" || fail "stale match status in $client"
+  ! grep -Eq 'NO_MATCH|(^|[^A-Z_])MATCH([^A-Z_]|$)' "$client" || fail "stale match status in $client"
   ! grep -Eq 'companyIdentificationNumber|companyName' "$client" || fail "legacy company field in $client"
-  grep -Eq 'POST|--request[[:space:]]+POST|\.post\(' "$client" || fail "POST backend endpoint missing in $client"
 done
 
+for client in e2e/verification.bats e2e/provider-failures.bats; do
+  ! grep -Eq -- '--get[[:space:]].*backend-service|/backend-service.*--get' "$client" || fail "stale GET backend endpoint in $client"
+  grep -Eq -- '--request[[:space:]]+POST.*backend-service|backend-service.*--request[[:space:]]+POST' "$client" || fail "POST backend endpoint missing in $client"
+  grep -Eq -- 'verificationId=' "$client" || fail "verificationId query parameter missing in $client"
+  grep -Eq -- 'query=' "$client" || fail "query parameter missing in $client"
+done
+
+grep -Eq 'self\.client\.post\([[:space:]]*"/backend-service"' performance/locustfile.py || fail "Locust POST backend endpoint missing"
+grep -Eq 'params=.*verificationId.*query|params=.*query.*verificationId' performance/locustfile.py || fail "Locust backend query parameters missing"
+! grep -Eq 'self\.client\.get\([[:space:]]*"/backend-service"' performance/locustfile.py || fail "stale Locust GET backend endpoint"
+
 for field in cin name registrationDate address isActive; do
-  grep -Eq "(^|[^[:alnum:]_])${field}([^[:alnum:]_]|$)" e2e/verification.bats performance/locustfile.py || fail "canonical field missing from executable clients: $field"
+  grep -Eq "(^|[^[:alnum:]_])${field}([^[:alnum:]_]|$)" e2e/verification.bats || fail "canonical field missing from E2E client: $field"
 done
 grep -Eq 'IN_PROGRESS|COMPLETED|FAILED' e2e/verification.bats || fail "canonical lifecycle statuses missing from E2E client"
 
