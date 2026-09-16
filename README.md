@@ -19,6 +19,11 @@ scripts/compose-wait.sh. Stop the stack with scripts/compose-down.sh; it does
 not remove volumes. Image values are inputs because this parent does not own
 the service/provider source repositories.
 
+Observability is opt-in: run `docker compose --profile observability up -d`
+after setting its image and retention values in `.env`. Grafana is exposed on
+`GRAFANA_PORT`; local storage is bounded to 24 hours. The static smoke check is
+`scripts/observability-smoke.sh`.
+
 The service submodule pointer is intentionally not changed by workspace
 configuration work. To update it, checkout an approved service commit inside
 the service repository, then commit only the parent gitlink as described in
