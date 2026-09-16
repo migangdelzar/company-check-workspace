@@ -5,7 +5,7 @@ workspace_root="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 cd "$workspace_root"
 
 service_commit="308c0cf"
-provider_commit="e5e08dd"
+provider_commit="96df1ee"
 
 fail() { printf 'workspace validation failed: %s\n' "$1" >&2; exit 1; }
 
