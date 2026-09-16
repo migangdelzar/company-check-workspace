@@ -115,7 +115,7 @@ services:
     profiles: [performance]
     command: ["-f", "/mnt/performance/locustfile.py", "--host", "http://backend:8080"]
     volumes:
-      - ./performance:/mnt/performance:ro
+      - ./company-check-service/performance:/mnt/performance:ro
       - ${PERFORMANCE_ARTIFACTS_DIR:-.performance-artifacts}:/mnt/artifacts
     networks: [internal]
     depends_on: { backend: { condition: service_healthy } }

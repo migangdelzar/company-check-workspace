@@ -15,6 +15,10 @@ run = "company-check-service/gradlew fastCheck"
 description = "Run the complete service verification gate"
 run = "company-check-service/gradlew qualityGate"
 
+[tasks.performance]
+description = "Run the service-owned Locust workload through Gradle"
+run = "company-check-service/gradlew performanceTest"
+
 [tasks.provider-quality]
 description = "Run provider formatting, type, lint and test checks"
 run = "cd company-check-provider && bun run quality"
