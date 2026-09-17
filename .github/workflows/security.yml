@@ -41,7 +41,10 @@ jobs:
             build-mode: none
             build: cd company-check-provider && bun install --frozen-lockfile && bun run build
     steps:
-      - uses: ./.github/actions/checkout-workspace
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         if: matrix.language == 'java'
         with:
@@ -65,7 +68,8 @@ jobs:
 
   dependency-review:
     name: Dependency review
-    if: github.event_name == 'pull_request'
+    # Enable after the repository dependency graph is enabled.
+    if: github.event_name == 'pull_request' && vars.DEPENDENCY_GRAPH_ENABLED == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -81,7 +85,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: ./.github/actions/checkout-workspace
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
       - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -95,7 +102,10 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: ./.github/actions/checkout-workspace
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
       - name: Report source, dependency, secret, and configuration findings
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -137,7 +147,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
-      - uses: ./.github/actions/checkout-workspace
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
@@ -157,6 +170,9 @@ jobs:
 
   container:
     name: Build and scan JVM image
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (vars.PAKETO_BUILDER_IMAGE != '' && vars.PAKETO_RUN_IMAGE != '')
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
@@ -167,7 +183,10 @@ jobs:
       PAKETO_RUN_IMAGE: ${{ inputs.paketo-run-image || vars.PAKETO_RUN_IMAGE }}
       SECURITY_IMAGE: company-check-security:${{ github.sha }}
     steps:
-      - uses: ./.github/actions/checkout-workspace
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin

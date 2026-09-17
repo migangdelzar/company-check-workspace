@@ -19,10 +19,11 @@ permissions:
 jobs:
   promote:
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     environment: production-release
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/login-action@v3
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -37,7 +38,7 @@ jobs:
           actual="$(docker buildx imagetools inspect "$SOURCE_IMAGE" --format '{{json .Manifest.Digest}}' | tr -d '"')"
           expected="${SOURCE_IMAGE##*@}"
           test "$actual" = "$expected"
-          crane copy "$SOURCE_IMAGE" "$TARGET_IMAGE"
+          docker buildx imagetools create --tag "$TARGET_IMAGE" "$SOURCE_IMAGE"
       - name: Promote provider without rebuilding
         env:
           SOURCE_IMAGE: ${{ inputs.provider_source }}
@@ -48,4 +49,4 @@ jobs:
           actual="$(docker buildx imagetools inspect "$SOURCE_IMAGE" --format '{{json .Manifest.Digest}}' | tr -d '"')"
           expected="${SOURCE_IMAGE##*@}"
           test "$actual" = "$expected"
-          crane copy "$SOURCE_IMAGE" "$TARGET_IMAGE"
+          docker buildx imagetools create --tag "$TARGET_IMAGE" "$SOURCE_IMAGE"

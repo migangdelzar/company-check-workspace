@@ -16,7 +16,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: ./.github/actions/checkout-workspace
     - name: Start and verify the Compose stack
       shell: bash
       env:

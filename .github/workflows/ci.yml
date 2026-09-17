@@ -15,25 +15,33 @@ concurrency:
 jobs:
   workspace-gates:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
-      - uses: ./.github/actions/checkout-workspace
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
           java-version: '25'
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
       - name: Check workspace contract and topology gates
         working-directory: company-check-service
         run: ./gradlew fastCheck
 
   changes:
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     outputs:
       service: ${{ steps.paths.outputs.service }}
       provider: ${{ steps.paths.outputs.provider }}
       e2e: ${{ steps.paths.outputs.e2e }}
     steps:
-      - uses: ./.github/actions/checkout-workspace
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
       - id: paths
         shell: bash
         env:
@@ -58,7 +66,12 @@ jobs:
 
   e2e:
     needs: changes
-    if: needs.changes.outputs.e2e == 'true'
+    if: >-
+      needs.changes.outputs.e2e == 'true' &&
+      vars.COMPANY_CHECK_SERVICE_IMAGE != '' &&
+      vars.COMPANY_CHECK_PROVIDER_IMAGE != '' &&
+      vars.POSTGRES_IMAGE != '' &&
+      vars.REDIS_IMAGE != ''
     uses: ./.github/workflows/e2e.yml
     with:
       service-image: ${{ vars.COMPANY_CHECK_SERVICE_IMAGE }}
