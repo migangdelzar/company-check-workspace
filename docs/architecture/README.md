@@ -1,6 +1,8 @@
 # Architecture
 
 - [System overview](overview.md) — components, ownership, and runtime profiles.
+- [Runtime architecture](runtime-architecture.md) — layers, build artifacts, single/distributed deployments, observability, and resource bounds.
+- [Resilience and fallback](resilience.md) — filters, rate limiters, provider fallback, connection pools, caches, leases, and failure handling.
 - [Request flow](request-flow.md) — start/retrieve behavior and failure boundaries.
 - [Expiration flow](expiration-flow.md) — single-owner batch expiration with TTL locks.
 - [Deployment topologies](deployment.md) — Compose single-node and distributed layouts.

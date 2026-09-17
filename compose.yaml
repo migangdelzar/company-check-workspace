@@ -98,4 +98,5 @@ services:
     networks: [internal]
     depends_on: { backend: { condition: service_started } }
 networks:
-  internal: { internal: true }
+  internal:
+    internal: ${COMPOSE_INTERNAL_NETWORK:-false}

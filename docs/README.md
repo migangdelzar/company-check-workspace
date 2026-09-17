@@ -7,6 +7,8 @@ and verification workflow for the Company Check workspace.
 
 - [Workspace README](../README.md) — setup, Compose profiles, tests, and Locust.
 - [Architecture index](architecture/README.md) — system boundaries and runtime flows.
+- [Runtime architecture](architecture/runtime-architecture.md) — build-to-runtime topology and observability components.
+- [Resilience and fallback](architecture/resilience.md) — admission control, provider fallback, and bounded resource behavior.
 - [Application startup](architecture/startup.md) — complete local startup and shutdown sequence.
 - [ADR index](adr/README.md) — technology and design decisions.
 - [Image contract](../company-check-service/docs/image-contract.md) — immutable image rules.

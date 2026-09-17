@@ -47,3 +47,21 @@ Compose and performance tests; it is not part of the domain model.
 | `distributed` | Redis | Redis fixed-window limits | multiple backend replicas |
 
 Both profiles use PostgreSQL and the same application/domain behavior.
+
+## Cross-cutting infrastructure
+
+The backend uses Java virtual threads for request and scheduling work, but
+back-pressure remains explicit at every scarce resource: Hikari connections,
+the shared Apache HttpClient 5 connection pool, provider bulkheads and rate
+limits, Redis coordination waiters, and expiration batches. Caffeine is the
+bounded local result cache in both profiles; Redis adds shared cache,
+coordination, leases, and fixed-window limits only in the distributed profile.
+
+The optional observability overlay adds Prometheus for Actuator metrics, Alloy
+as the OTLP and Docker-log collector, Tempo for traces, Loki for logs, and
+Grafana as the query/UI layer. It can be combined with either runtime profile;
+the backend receives no Docker socket.
+
+For the complete build artifact pipeline and topology diagrams, see
+[Runtime architecture](runtime-architecture.md). For protection and failure
+semantics, see [Resilience and fallback](resilience.md).

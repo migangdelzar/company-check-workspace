@@ -11,7 +11,7 @@ The service accepts a verification ID and company query, coordinates duplicate
 work, calls the appropriate provider, stores the result in PostgreSQL, and
 exposes read-only retrieval.
 
-See [architecture](docs/architecture/README.md) and
+See [architecture](docs/architecture/README.md), including the [runtime architecture](docs/architecture/runtime-architecture.md) and [resilience/fallback reference](docs/architecture/resilience.md), and
 [ADRs](docs/adr/README.md) for the design rationale.
 
 For the complete prerequisite, image-build, Compose startup, health-check,
@@ -234,7 +234,10 @@ observability or multiple backend replicas.
 Docker Desktop users should set the equivalent values under Settings →
 Resources. Leave `DOCKER_HOST` unset with Docker Desktop so Docker and
 Testcontainers use its default socket. Set an explicit host only for a
-VM-backed context such as Colima.
+VM-backed context such as Colima. Compose keeps the network externally routable
+so its explicitly published observability ports work; services without a
+published port remain reachable only inside the Compose network. Set
+`COMPOSE_INTERNAL_NETWORK=true` when host-published ports are not needed.
 
 ## Locust performance smoke test
 
