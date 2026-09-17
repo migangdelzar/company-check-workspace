@@ -8,6 +8,8 @@
 
 **Tech Stack:** Java 25, Spring Boot 4.1, Spring Modulith, Gradle Kotlin DSL, JdbcClient/JDBC, PostgreSQL, Redis, Apache HttpClient 5, Resilience4j, Caffeine, Testcontainers, ArchUnit, Bun/Fastify provider, Docker Compose, Mermaid.
 
+**Status:** Implementation and verification complete; service changes remain in the existing mixed worktree for review, and isolated documentation corrections are committed.
+
 ## Global Constraints
 
 - Keep `GET /backend-service` and `GET /verifications/{verificationId}` behavior aligned with the OpenAPI contract and controller implementation.
@@ -83,7 +85,7 @@ Checkstyle, coverage verification, and static checks passing.
 - Consumes: current package tree, Spring profile configuration, Gradle convention plugins, and existing tests.
 - Produces: executable assertions for the target package graph and runtime profile/resource invariants.
 
-- [ ] **Step 1: Inspect existing assertions and add only missing invariants**
+- [x] **Step 1: Inspect existing assertions and add only missing invariants**
 
 Add focused tests for these exact behaviors. Use ArchUnit’s existing imported
 `noClasses()` rule style in `HexagonalDependencyTest` and preserve the current
@@ -100,7 +102,7 @@ duplicating an assertion already present. Add profile assertions that local
 configuration supplies local coordination and distributed configuration
 supplies Redis coordination, while both profiles retain PostgreSQL access.
 
-- [ ] **Step 2: Run the focused tests and record the red result**
+- [x] **Step 2: Run the focused tests and record the red result**
 
 Run:
 
@@ -112,13 +114,13 @@ Expected: existing assertions pass; any new assertion that exposes a real
 violation fails with the concrete class/package name. If all tests pass, keep
 the tests as regression coverage and proceed without production changes.
 
-- [ ] **Step 3: Implement the minimum boundary/configuration correction**
+- [x] **Step 3: Implement the minimum boundary/configuration correction**
 
 If red, change only the named import, package declaration, bean condition, or
 profile property that caused the failure. Do not move application behavior or
 introduce a wrapper solely to satisfy the test.
 
-- [ ] **Step 4: Run the focused tests green**
+- [x] **Step 4: Run the focused tests green**
 
 ```bash
 ./gradlew test --tests '*HexagonalDependencyTest' --tests '*DomainPackageStructureTest' --tests '*AdapterPackageStructureTest' --tests '*RuntimeProfileConfigurationTest'
@@ -136,6 +138,10 @@ git commit -m "test(architecture): enforce modernization boundaries"
 
 Stage only this task’s tests and any directly required production hunk.
 
+The service worktree already contained unrelated modernization edits before
+this task. Keep this commit pending until those edits are separated and
+reviewed; do not stage the whole service tree.
+
 ## Task 2: Verify PostgreSQL authority and coordination safety
 
 **Files:**
@@ -148,7 +154,7 @@ Stage only this task’s tests and any directly required production hunk.
 - Consumes: `VerificationRepository`, `CoordinationPort`, `ExpirationLock`, and existing application services.
 - Produces: regression coverage proving read/write authority, duplicate-work coordination, safe lease ownership, and recovery semantics.
 
-- [ ] **Step 1: Add failing tests for uncovered authority invariants**
+- [x] **Step 1: Review existing authority/lease coverage and add only uncovered invariants**
 
 Cover these exact cases using the existing `MemoryRepository`, coordination
 fakes, Mockito Redis adapter tests, and Testcontainers integration tests:
@@ -164,7 +170,7 @@ Each test must use a fake/spy for every external port and assert the single
 behavior named by the test. Fill each test from the existing public methods;
 do not invent a new API to make tests easier.
 
-- [ ] **Step 2: Run the tests and confirm the right failure**
+- [x] **Step 2: Run the tests and confirm the right failure**
 
 ```bash
 ./gradlew test --tests '*VerificationUseCaseServiceTest' --tests '*RedisCoordinationAdapterTest' --tests '*RedisExpirationLockTest' --tests '*VerificationRecoveryIT'
@@ -174,13 +180,13 @@ Expected: newly added tests fail only where implementation violates the
 authority/lease invariant; compilation failures count as red for a missing
 test seam and must be resolved minimally.
 
-- [ ] **Step 3: Implement the minimum correction**
+- [x] **Step 3: Implement the minimum correction**
 
 Correct ordering, SQL selection, lease token checking, or degraded behavior as
 identified by the red test. Keep PostgreSQL as the state authority and retain
 existing exception types and response mappings.
 
-- [ ] **Step 4: Run unit and integration coverage green**
+- [x] **Step 4: Run unit and integration coverage green**
 
 ```bash
 ./gradlew test --tests '*VerificationUseCaseServiceTest' --tests '*RedisCoordinationAdapterTest' --tests '*RedisExpirationLockTest'
@@ -211,7 +217,7 @@ git commit -m "test(verification): protect authoritative state flow"
 - Consumes: provider endpoint properties, Apache HttpClient 5, provider lookup port, and Resilience4j configuration.
 - Produces: tested provider boundary with explicit pool/timeouts and stable failure classification.
 
-- [ ] **Step 1: Add failing configuration/policy tests**
+- [x] **Step 1: Review existing provider/configuration coverage and add only uncovered invariants**
 
 Add focused tests with these exact names and assertions:
 
@@ -225,7 +231,7 @@ Use the actual bean/property types exposed by the current implementation. Do
 not test private implementation details when a bean or provider port can be
 tested instead.
 
-- [ ] **Step 2: Run provider-focused tests red**
+- [x] **Step 2: Run provider-focused tests red**
 
 ```bash
 ./gradlew test --tests '*ProviderPropertiesTest' --tests '*ProviderResponseMapperTest' --tests '*DistributedProviderTest' --tests '*ProviderHttpConfigurationTest'
@@ -234,14 +240,14 @@ tested instead.
 Expected: new tests fail for each missing or incorrect invariant, or all pass
 if the existing implementation already satisfies the design.
 
-- [ ] **Step 3: Implement only proven corrections**
+- [x] **Step 3: Implement only proven corrections**
 
 Use the current Apache HttpClient 5 and Spring-supported configuration APIs.
 Keep one shared bounded connection manager, explicit request/connect/response
 deadlines, and existing Resilience4j policy names. Do not add a second HTTP
 client abstraction.
 
-- [ ] **Step 4: Run focused checks green**
+- [x] **Step 4: Run focused checks green**
 
 ```bash
 ./gradlew test --tests '*ProviderPropertiesTest' --tests '*ProviderResponseMapperTest' --tests '*DistributedProviderTest' --tests '*ProviderHttpConfigurationTest'
@@ -269,7 +275,7 @@ git commit -m "test(provider): verify bounded resilient HTTP boundary"
 - Consumes: Spring controllers, OpenAPI contract, Gradle tasks, Compose overlays, ADRs, and architecture documents.
 - Produces: one internally consistent developer/release workflow and documentation set.
 
-- [ ] **Step 1: Add failing parity/documentation checks where absent**
+- [x] **Step 1: Review existing parity/documentation checks and add only uncovered invariants**
 
 Cover these exact behaviors using the current controller, configuration, and
 build-structure test styles:
@@ -283,7 +289,7 @@ build-structure test styles:
 Use existing contract/build test conventions and compare actual parsed route or
 configuration values rather than duplicating raw strings in assertions.
 
-- [ ] **Step 2: Run focused validation**
+- [x] **Step 2: Run focused validation**
 
 ```bash
 ./gradlew test --tests '*BackendServiceControllerTest' --tests '*IncodeCompositionTest' --tests '*GradleStructureTest'
@@ -294,7 +300,7 @@ docker compose -f compose.yaml -f compose.distributed.yaml config
 Expected: tests pass; both Compose commands render valid configurations. If
 Docker is unavailable, run static YAML inspection and report the blocker.
 
-- [ ] **Step 3: Correct drift and complete documentation**
+- [x] **Step 3: Correct drift and complete documentation**
 
 Ensure these documents are present and linked:
 
@@ -309,7 +315,7 @@ Update diagrams and commands to match verified behavior. Keep ADR decisions
 immutable; use a new ADR when a decision genuinely changes. Do not claim a
 performance threshold is enforced when the runner only reports it.
 
-- [ ] **Step 4: Run provider and workspace documentation checks**
+- [x] **Step 4: Run provider and workspace documentation checks**
 
 ```bash
 (cd company-check-provider && bun run quality)
@@ -319,7 +325,7 @@ git diff --check
 Expected: provider quality passes and the combined worktree has no whitespace
 errors in changed text files.
 
-- [ ] **Step 5: Commit the task**
+- [x] **Step 5: Commit the task**
 
 ```bash
 git add README.md .env.example compose.yaml compose.single.yaml compose.distributed.yaml mise.toml openapi/backend-api.yaml docs/adr docs/architecture
@@ -329,6 +335,9 @@ git commit -m "docs(workspace): align architecture and deployment guidance"
 
 Do not stage the provider or service submodule pointer in this commit.
 
+Documentation corrections were committed as `fd113b1`; the baseline ADR and
+architecture files were already tracked separately.
+
 ## Task 5: Run complete verification and close the plan
 
 **Files:**
@@ -337,7 +346,7 @@ Do not stage the provider or service submodule pointer in this commit.
 - No source changes unless verification exposes a new red test; add that test
   and correction as a new task before changing production code.
 
-- [ ] **Step 1: Run the fast service gate**
+- [x] **Step 1: Run the fast service gate**
 
 ```bash
 ./gradlew fastCheck --no-daemon --console=plain
@@ -346,7 +355,7 @@ Do not stage the provider or service submodule pointer in this commit.
 Expected: `BUILD SUCCESSFUL`, zero test failures, zero skipped tests, and
 coverage verification passing.
 
-- [ ] **Step 2: Run the complete service gate**
+- [x] **Step 2: Run the complete service gate**
 
 ```bash
 ./gradlew qualityGate --no-daemon --console=plain --no-parallel --max-workers=1
@@ -356,7 +365,7 @@ Expected: `BUILD SUCCESSFUL` with PostgreSQL/Redis integration tests and
 contract checks passing. If Testcontainers cannot connect to Docker, preserve
 the exact error and do not mark the integration portion complete.
 
-- [ ] **Step 3: Review the final dependency and contract surface**
+- [x] **Step 3: Review the final dependency and contract surface**
 
 ```bash
 tgrep -n 'adapter\.config|adapter\.out\.expiration|domain\.(aggregate|entity|policy|type|valueobject)|org\.springframework' company-check-service/src/main/java/com/incode/verification/domain company-check-service/src/main/java/com/incode/verification/application || true
@@ -368,7 +377,8 @@ git status --short
 Expected: no legacy package references and no Spring imports in domain or
 application packages; all remaining changes are intentional and reviewable.
 
-- [ ] **Step 4: Mark the plan complete and report evidence**
+- [x] **Step 4: Mark the plan complete and report evidence**
 
-Set the plan status to `Complete` only after all available required checks pass.
-Report commands, results, environment blockers, changed files, and commits.
+All available required checks pass. Service source changes remain intentionally
+uncommitted because the nested repository had a pre-existing mixed worktree;
+report the changed files and commits without claiming a clean service tree.
