@@ -69,14 +69,29 @@ The runner supports both `single` and `distributed` topologies. In distributed
 mode it scales the backend replicas and requires immutable or locally resolvable
 image references; it does not assume that a host-published backend port exists.
 
-## CI validation and security
+## CI pipeline
 
-The on-demand/reusable `.github/workflows/validation.yml` workflow runs the
-provider and service gates, then builds and smoke-tests both JVM and native
-amd64 service images from immutable Paketo inputs. The dedicated
-`.github/workflows/security.yml` workflow runs CodeQL, dependency review,
-Gitleaks, Trivy filesystem/image scans, dependency-lock verification, and SPDX
-SBOM generation. High and critical vulnerabilities fail the relevant job;
-lower-severity findings remain available in SARIF and workflow artifacts.
+`.github/workflows/ci.yml` is the single orchestration graph. It runs quality,
+security, image build, E2E, and performance stages under one `plan` job that
+decides which stages execute from the workflow dispatch inputs; on push and
+pull requests every stage defaults to on. The reusable leaves are
+`component` quality jobs, `.github/workflows/build-images.yml`,
+`.github/workflows/e2e.yml`, and `.github/workflows/performance.yml`. Image
+builds publish immutable `validation-<sha>-<variant>` references that E2E,
+Locust, and the container security scan consume by digest.
+
+Caching is applied across the graph: the Gradle home and build cache through
+`gradle/actions/setup-gradle`, the Bun install cache and provider `node_modules`
+through `actions/cache`, provider image layers through
+`docker/build-push-action` GHA cache mode, and the immutable
+PostgreSQL/Redis/Locust infrastructure images through `docker load`/`save`
+tarballs keyed by digest.
+
+Security results (CodeQL, Gitleaks, Trivy filesystem/image, dependency-lock
+verification, and SPDX SBOM generation) are reported to code scanning with SARIF
+uploads and workflow artifacts. High and critical vulnerabilities fail the
+relevant job; lower-severity findings remain available in SARIF and workflow
+artifacts. Dependency-review runs on pull requests once the repository variable
+`DEPENDENCY_GRAPH_ENABLED` is `true` and the dependency graph is enabled.
 For organization-owned repositories, configure the free `GITLEAKS_LICENSE`
 repository or organization secret so the Gitleaks action can scan history.

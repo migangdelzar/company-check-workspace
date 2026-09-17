@@ -16,6 +16,32 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Cache PostgreSQL and Redis images
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          .infra-images/postgres.tar
+          .infra-images/redis.tar
+        key: infra-${{ runner.os }}-${{ inputs.postgres-image }}-${{ inputs.redis-image }}
+    - name: Load or pull infrastructure images
+      shell: bash
+      env:
+        POSTGRES_IMAGE: ${{ inputs.postgres-image }}
+        REDIS_IMAGE: ${{ inputs.redis-image }}
+      run: |
+        set -euo pipefail
+        load_or_pull() {
+          local name="$1" image="$2"
+          if [[ -f ".infra-images/${name}.tar" ]]; then
+            docker load --input ".infra-images/${name}.tar"
+          else
+            mkdir -p .infra-images
+            docker pull --quiet "$image"
+            docker save --output ".infra-images/${name}.tar" "$image"
+          fi
+        }
+        load_or_pull postgres "$POSTGRES_IMAGE"
+        load_or_pull redis "$REDIS_IMAGE"
     - name: Start Compose dependencies and verify the verification API
       shell: bash
       env:

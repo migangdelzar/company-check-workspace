@@ -99,10 +99,34 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
-      - name: Pull immutable Locust load-test image
+      - name: Cache infrastructure and load-test images
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .infra-images/postgres.tar
+            .infra-images/redis.tar
+            .infra-images/locust.tar
+          key: infra-${{ runner.os }}-${{ inputs.postgres-image }}-${{ inputs.redis-image }}-${{ inputs.locust-image }}
+      - name: Load or pull infrastructure and load-test images
         env:
+          POSTGRES_IMAGE: ${{ inputs.postgres-image }}
+          REDIS_IMAGE: ${{ inputs.redis-image }}
           LOCUST_IMAGE: ${{ inputs.locust-image }}
-        run: docker pull --quiet "$LOCUST_IMAGE"
+        run: |
+          set -euo pipefail
+          load_or_pull() {
+            local name="$1" image="$2"
+            if [[ -f ".infra-images/${name}.tar" ]]; then
+              docker load --input ".infra-images/${name}.tar"
+            else
+              mkdir -p .infra-images
+              docker pull --quiet "$image"
+              docker save --output ".infra-images/${name}.tar" "$image"
+            fi
+          }
+          load_or_pull postgres "$POSTGRES_IMAGE"
+          load_or_pull redis "$REDIS_IMAGE"
+          load_or_pull locust "$LOCUST_IMAGE"
       - name: Execute bounded Locust performance validation
         env:
           COMPANY_CHECK_SERVICE_IMAGE: ${{ inputs.service-image }}

@@ -1,0 +1,35 @@
+name: Set up Java toolchains and Gradle cache
+description: Install pinned JDKs, export Gradle toolchain paths, and enable the Gradle build cache
+inputs:
+  java-versions:
+    description: Newline-separated Temurin versions to install
+    required: true
+    default: |
+      25
+      24
+  gradle-cache:
+    description: Enable the Gradle build cache via gradle/actions/setup-gradle
+    required: false
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+      with:
+        distribution: temurin
+        java-version: ${{ inputs.java-versions }}
+    - name: Export Gradle Java toolchain paths
+      shell: bash
+      run: |
+        paths=()
+        [[ -n "${JAVA_HOME_25_X64:-}" ]] && paths+=("$JAVA_HOME_25_X64")
+        [[ -n "${JAVA_HOME_24_X64:-}" ]] && paths+=("$JAVA_HOME_24_X64")
+        [[ -n "${JAVA_HOME_25_ARM64:-}" ]] && paths+=("$JAVA_HOME_25_ARM64")
+        [[ -n "${JAVA_HOME_24_ARM64:-}" ]] && paths+=("$JAVA_HOME_24_ARM64")
+        if ((${#paths[@]})); then
+          printf 'GRADLE_OPTS=-Dorg.gradle.java.installations.paths=%s' "$(
+            printf '%s' "${paths[@]}" | tr ' ' ',' | tr -d '\n'
+          )" >>"$GITHUB_ENV"
+        fi
+    - uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
+      if: inputs.gradle-cache == 'true'

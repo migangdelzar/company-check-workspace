@@ -5,19 +5,62 @@ on:
   push:
   workflow_dispatch:
     inputs:
-      run-validation:
-        description: Run the complete JVM/native validation workflow
-        required: true
-        default: false
+      stage-quality:
+        description: Run quality gates (workspace, service, provider)
+        required: false
+        default: true
+        type: boolean
+      stage-security:
+        description: Run security jobs (CodeQL, secrets, filesystem, image)
+        required: false
+        default: true
+        type: boolean
+      stage-build:
+        description: Build and publish immutable validation images
+        required: false
+        default: true
+        type: boolean
+      stage-e2e:
+        description: Run the Compose API end-to-end suite
+        required: false
+        default: true
+        type: boolean
+      stage-stress:
+        description: Run the bounded Locust performance validation
+        required: false
+        default: true
         type: boolean
       image-variant:
-        description: Image variant to validate when run-validation is enabled
-        required: true
+        description: Image variant to build and validate
+        required: false
         default: jvm
         type: choice
         options:
           - jvm
           - native
+      topology:
+        description: Compose topology to exercise under load
+        required: false
+        default: single
+        type: choice
+        options:
+          - single
+          - distributed
+      users:
+        description: Locust concurrent users
+        required: false
+        default: "10"
+        type: string
+      spawn-rate:
+        description: Locust users spawned per second
+        required: false
+        default: "2"
+        type: string
+      duration:
+        description: Bounded Locust duration, for example 60s
+        required: false
+        default: 60s
+        type: string
       postgres-image:
         description: Immutable PostgreSQL image reference for E2E and Locust
         required: false
@@ -29,90 +72,358 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
-  group: workspace-ci-${{ github.workflow }}-${{ github.ref }}
+  group: workspace-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  workspace-gates:
+  plan:
+    name: plan · decide
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 5
+    outputs:
+      quality: ${{ steps.decide.outputs.quality }}
+      security: ${{ steps.decide.outputs.security }}
+      build: ${{ steps.decide.outputs.build }}
+      e2e: ${{ steps.decide.outputs.e2e }}
+      stress: ${{ steps.decide.outputs.stress }}
+      image-variant: ${{ steps.decide.outputs.image-variant }}
+      topology: ${{ steps.decide.outputs.topology }}
+      users: ${{ steps.decide.outputs.users }}
+      spawn-rate: ${{ steps.decide.outputs.spawn-rate }}
+      duration: ${{ steps.decide.outputs.duration }}
+      postgres: ${{ steps.decide.outputs.postgres }}
+      redis: ${{ steps.decide.outputs.redis }}
     steps:
-      - name: Check out workspace and submodules
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Decide which stages run
+        id: decide
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          Q: ${{ inputs.stage-quality }}
+          S: ${{ inputs.stage-security }}
+          B: ${{ inputs.stage-build }}
+          E: ${{ inputs.stage-e2e }}
+          T: ${{ inputs.stage-stress }}
+          IV: ${{ inputs.image-variant }}
+          TOPO: ${{ inputs.topology }}
+          USERS: ${{ inputs.users }}
+          SPAWN: ${{ inputs.spawn-rate }}
+          DUR: ${{ inputs.duration }}
+          PGSQL: ${{ inputs.postgres-image }}
+          REDIS: ${{ inputs.redis-image }}
+        run: |
+          set -euo pipefail
+          quality="${Q:-true}"
+          security="${S:-true}"
+          build="${B:-true}"
+          e2e="${E:-true}"
+          stress="${T:-true}"
+          printf 'quality=%s\nsecurity=%s\nbuild=%s\ne2e=%s\nstress=%s\n' \
+            "$quality" "$security" "$build" "$e2e" "$stress" >>"$GITHUB_OUTPUT"
+          printf 'image-variant=%s\n' "${IV:-jvm}" >>"$GITHUB_OUTPUT"
+          printf 'topology=%s\n' "${TOPO:-single}" >>"$GITHUB_OUTPUT"
+          printf 'users=%s\nspawn-rate=%s\nduration=%s\n' "${USERS:-10}" "${SPAWN:-2}" "${DUR:-60s}" >>"$GITHUB_OUTPUT"
+          printf 'postgres=%s\n' "${PGSQL:-postgres@sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73}" >>"$GITHUB_OUTPUT"
+          printf 'redis=%s\n' "${REDIS:-redis@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf}" >>"$GITHUB_OUTPUT"
+          reason() { [[ "$EVENT" == "workflow_dispatch" ]] && echo "dispatch input" || echo "push/PR default"; }
+          printf '\n===== CI stage plan (%s) =====\n' "$EVENT"
+          printf '%-22s %-6s %s\n' "stage" "run?" "reason"
+          printf '%-22s %-6s %s\n' "quality" "$quality" "$(reason)"
+          printf '%-22s %-6s %s\n' "security" "$security" "$(reason)"
+          printf '%-22s %-6s %s\n' "build" "$build" "$(reason)"
+          printf '%-22s %-6s %s\n' "e2e" "$e2e" "$(reason)"
+          printf '%-22s %-6s %s\n' "stress" "$stress" "$(reason)"
+          printf '==============================\n'
+
+  quality-workspace:
+    name: quality · workspace
+    needs: plan
+    if: needs.plan.outputs.quality == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout workspace with submodules
+        uses: ./.github/actions/checkout-workspace
+      - name: Set up Java 25 and Gradle cache
+        uses: ./.github/actions/setup-java
         with:
-          submodules: recursive
-          fetch-depth: 0
-      - name: Set up Java
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
-        with:
-          distribution: temurin
-          java-version: '25'
-      - name: Set up Gradle build cache
-        uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
+          java-versions: '25'
       - name: Validate workspace contract and submodule topology
         working-directory: company-check-service
         run: ./gradlew fastCheck
 
-  changes:
+  quality-service:
+    name: quality · service
+    needs: plan
+    if: needs.plan.outputs.quality == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    outputs:
-      service: ${{ steps.paths.outputs.service }}
-      provider: ${{ steps.paths.outputs.provider }}
-      e2e: ${{ steps.paths.outputs.e2e }}
+    timeout-minutes: 30
     steps:
-      - name: Check out workspace history
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          submodules: recursive
-          fetch-depth: 0
-      - name: Detect changed workspace areas
-        id: paths
-        shell: bash
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
+      - name: Checkout workspace with submodules
+        uses: ./.github/actions/checkout-workspace
+      - name: Set up Java toolchains and Gradle cache
+        uses: ./.github/actions/setup-java
+      - name: Run full service quality suite
+        working-directory: company-check-service
+        run: ./gradlew check
+
+  quality-provider:
+    name: quality · provider
+    needs: plan
+    if: needs.plan.outputs.quality == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout workspace with submodules
+        uses: ./.github/actions/checkout-workspace
+      - name: Set up Bun and dependency cache
+        uses: ./.github/actions/setup-bun
+      - name: Run provider quality suite
+        working-directory: company-check-provider
         run: |
-          changed="$(git diff --name-only "$BASE_SHA" "$GITHUB_SHA")"
-          matches() { printf '%s\n' "$changed" | grep -Eq "$1"; }
-          printf 'service=%s\n' "$(matches '^(company-check-service/|\.github/workflows/component-quality\.yml)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          printf 'provider=%s\n' "$(matches '^(company-check-provider/|\.github/workflows/component-quality\.yml)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          printf 'e2e=%s\n' "$(matches '^(compose\.yaml|\.env\.example|\.github/(actions/compose-e2e|workflows/(e2e|ci)\.yml))' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          bun install --frozen-lockfile
+          bun run quality
+          bun run test:contract
 
-  components:
-    needs: changes
-    if: needs.changes.outputs.service == 'true' || needs.changes.outputs.provider == 'true'
-    strategy:
-      fail-fast: false
-      matrix:
-        component: [service, provider]
-    uses: ./.github/workflows/component-quality.yml
-    with:
-      component: ${{ matrix.component }}
+  security-codeql-java:
+    name: security · codeql · java
+    needs: plan
+    if: needs.plan.outputs.security == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout workspace with submodules
+        uses: ./.github/actions/checkout-workspace
+      - name: Set up Java 25 and Gradle cache
+        uses: ./.github/actions/setup-java
+        with:
+          java-versions: '25'
+      - uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+        with:
+          languages: java
+          build-mode: manual
+      - name: Build analyzed source
+        run: ./company-check-service/gradlew -p company-check-service classes --no-parallel --max-workers=1
+      - uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+        with:
+          category: /language:java
 
-  e2e:
-    needs: changes
-    if: >-
-      needs.changes.outputs.e2e == 'true' &&
-      vars.COMPANY_CHECK_SERVICE_IMAGE != '' &&
-      vars.COMPANY_CHECK_PROVIDER_IMAGE != '' &&
-      vars.POSTGRES_IMAGE != '' &&
-      vars.REDIS_IMAGE != ''
-    uses: ./.github/workflows/e2e.yml
-    with:
-      service-image: ${{ vars.COMPANY_CHECK_SERVICE_IMAGE }}
-      provider-image: ${{ vars.COMPANY_CHECK_PROVIDER_IMAGE }}
-      postgres-image: ${{ vars.POSTGRES_IMAGE }}
-      redis-image: ${{ vars.REDIS_IMAGE }}
+  security-codeql-js:
+    name: security · codeql · javascript-typescript
+    needs: plan
+    if: needs.plan.outputs.security == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout workspace with submodules
+        uses: ./.github/actions/checkout-workspace
+      - name: Set up Bun and dependency cache
+        uses: ./.github/actions/setup-bun
+      - uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+        with:
+          languages: javascript-typescript
+          build-mode: none
+      - name: Build analyzed source
+        run: cd company-check-provider && bun install --frozen-lockfile && bun run build
+      - uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+        with:
+          category: /language:javascript-typescript
 
-  validation:
-    if: github.event_name == 'workflow_dispatch' && inputs.run-validation == true
+  security-secrets:
+    name: security · secrets
+    needs: plan
+    if: needs.plan.outputs.security == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout workspace with submodules
+        uses: ./.github/actions/checkout-workspace
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  security-filesystem:
+    name: security · filesystem
+    needs: plan
+    if: needs.plan.outputs.security == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout workspace with submodules
+        uses: ./.github/actions/checkout-workspace
+      - name: Report source, dependency, secret, and configuration findings
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-filesystem.sarif
+          scanners: vuln,secret,misconfig
+          vuln-type: os,library
+          ignore-unfixed: true
+          exit-code: '0'
+      - name: Fail on high and critical filesystem findings
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          scanners: vuln,secret,misconfig
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Upload filesystem findings to code scanning
+        if: always() && hashFiles('trivy-filesystem.sarif') != ''
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+        with:
+          sarif_file: trivy-filesystem.sarif
+          category: trivy-filesystem
+      - name: Upload filesystem report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: security-filesystem-${{ github.run_id }}
+          path: trivy-filesystem.sarif
+          if-no-files-found: warn
+
+  security-dependency-integrity:
+    name: security · dependency-integrity
+    needs: plan
+    if: needs.plan.outputs.security == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout workspace with submodules
+        uses: ./.github/actions/checkout-workspace
+      - name: Set up Java toolchains and Gradle cache
+        uses: ./.github/actions/setup-java
+      - name: Set up Bun and dependency cache
+        uses: ./.github/actions/setup-bun
+      - name: Verify Gradle dependency locks and signatures
+        working-directory: company-check-service
+        run: ./gradlew qualityGate --dependency-verification=strict --no-parallel --max-workers=1
+      - name: Verify Bun lockfile and production compilation
+        working-directory: company-check-provider
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+
+  build-images:
+    name: build · images
+    needs: plan
+    if: needs.plan.outputs.build == 'true'
     permissions:
       contents: read
       packages: write
-    uses: ./.github/workflows/validation.yml
+    uses: ./.github/workflows/build-images.yml
     with:
-      image-variant: ${{ inputs.image-variant }}
-      postgres-image: ${{ inputs.postgres-image }}
-      redis-image: ${{ inputs.redis-image }}
+      image-variant: ${{ needs.plan.outputs.image-variant }}
+
+  security-container:
+    name: security · container
+    needs: [plan, build-images]
+    if: needs.plan.outputs.security == 'true' && needs.plan.outputs.build == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout workspace with submodules
+        uses: ./.github/actions/checkout-workspace
+      - name: Scan built JVM image for vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ needs.build-images.outputs.service-image }}
+          format: sarif
+          output: trivy-image.sarif
+          vuln-type: os,library
+          ignore-unfixed: true
+          exit-code: '0'
+      - name: Fail on high and critical image vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ needs.build-images.outputs.service-image }}
+          format: table
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Upload image findings to code scanning
+        if: always() && hashFiles('trivy-image.sarif') != ''
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-image
+      - name: Generate SPDX image SBOM
+        if: always()
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          image: ${{ needs.build-images.outputs.service-image }}
+          format: spdx-json
+          output-file: security-image.spdx.json
+          artifact-name: security-image-${{ github.run_id }}.spdx.json
+          upload-release-assets: false
+      - name: Upload image scan report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: security-image-${{ github.run_id }}
+          path: trivy-image.sarif
+          if-no-files-found: warn
+
+  e2e-compose:
+    name: e2e · compose
+    needs: [plan, build-images]
+    if: needs.plan.outputs.e2e == 'true' && needs.plan.outputs.build == 'true'
+    uses: ./.github/workflows/e2e.yml
+    with:
+      service-image: ${{ needs.build-images.outputs.service-image }}
+      provider-image: ${{ needs.build-images.outputs.provider-image }}
+      postgres-image: ${{ needs.plan.outputs.postgres }}
+      redis-image: ${{ needs.plan.outputs.redis }}
+
+  stress-locust:
+    name: stress · locust
+    needs: [plan, e2e-compose, build-images]
+    if: needs.plan.outputs.stress == 'true' && needs.plan.outputs.e2e == 'true'
+    uses: ./.github/workflows/performance.yml
+    with:
+      service-image: ${{ needs.build-images.outputs.service-image }}
+      provider-image: ${{ needs.build-images.outputs.provider-image }}
+      postgres-image: ${{ needs.plan.outputs.postgres }}
+      redis-image: ${{ needs.plan.outputs.redis }}
+      topology: ${{ needs.plan.outputs.topology }}
+      users: ${{ needs.plan.outputs.users }}
+      spawn-rate: ${{ needs.plan.outputs.spawn-rate }}
+      duration: ${{ needs.plan.outputs.duration }}
+
+  review-dependencies:
+    name: review · dependencies
+    needs: plan
+    if: github.event_name == 'pull_request' && vars.DEPENDENCY_GRAPH_ENABLED == 'true' && needs.plan.outputs.security == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        with:
+          fail-on-severity: high
