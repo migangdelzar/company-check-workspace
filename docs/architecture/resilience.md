@@ -53,7 +53,7 @@ provider quota or a provider bulkhead slot.
 
 ```mermaid
 flowchart LR
-  Request[VerificationService.start] --> Free[FreeProviderClient]
+  Request[ProviderService.resolve] --> Free[FreeProviderClient]
   Free -->|success| Result[Normalize and persist result]
   Free -->|transient, malformed, or empty result| Fallback[ProviderService\nfallback decision]
   Fallback --> Premium[PremiumProviderClient]
@@ -105,11 +105,12 @@ calls acquire an HTTP connection. The circuit uses a 20-call sliding window,
 requires 10 calls before evaluation, opens at 50% failure, waits 10 seconds,
 and permits two half-open calls.
 
-Single-node provider wrappers use local Resilience4j rate limiting. The
-distributed wrappers share the provider fixed-window decision through Redis
-and retain local retry, circuit-breaker, and semaphore controls on every
-replica. Redis quota rejection follows the same fallback classification as a
-provider-unavailable failure.
+`config.ProviderResilienceConfiguration` wires the single-node
+`FreeProviderClient` and `PremiumProviderClient`; the distributed configuration
+wires their Redis-aware counterparts. The wrappers share the provider
+fixed-window decision through Redis in distributed mode and retain local retry,
+circuit-breaker, and semaphore controls on every replica. Redis quota rejection
+follows the same fallback classification as a provider-unavailable failure.
 
 ## HTTP connection pools and time bounds
 

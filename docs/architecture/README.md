@@ -16,4 +16,5 @@ updated.
 The backend currently uses a conventional layered module: `config` wires the
 runtime, `controller` owns HTTP/scheduling boundaries, `service` owns workflows,
 `repository` owns state/coordination, `client` owns provider HTTP, `mapper`
-owns explicit conversions, and `exception` owns error translation.
+owns explicit conversions, `exception` owns error translation, and `util` is
+limited to small framework-free utilities.

@@ -15,6 +15,7 @@ flowchart TB
   Client[client\nprovider HTTP + DTOs]
   Mapper[mapper\nexplicit conversions]
   Exception[exception\nerrors + HTTP mapping]
+  Utility[util\nsmall framework-free helpers]
 
   Config --> Controller
   Config --> Service
@@ -28,6 +29,7 @@ flowchart TB
   Client -. provider mapping .-> Mapper
   Controller -. translated failures .-> Exception
   Service -. service failures .-> Exception
+  Service -. service-model helpers .-> Utility
 ```
 
 | Package | Responsibility | Boundary rule |
@@ -39,10 +41,13 @@ flowchart TB
 | `client` | `ProviderClient`, typed FREE/PREMIUM clients, provider transport handling, and client DTOs | Owns provider wire types and HTTP integration |
 | `mapper` | `VerificationMapper`, `ProviderMapper`, `VerificationStateMapper`, and reconciliation mapping | Performs small, explicit representation conversions |
 | `exception` | Business/integration exception hierarchy and `GlobalExceptionHandler` | Keeps HTTP error translation at the boundary |
+| `util` | Small framework-free utilities such as `UuidV7` | Does not own workflow or infrastructure policy |
 
-The single `verification` Modulith module and layered ArchUnit tests protect
-these rules. The legacy `adapter`, `application`, and `domain` production
-packages were removed by the layered migration.
+The single `verification` Modulith module and `LayeredDependencyTest`,
+`LayerPackageStructureTest`, and `ServiceModelArchitectureTest` protect these
+rules. The legacy top-level `adapter`, `application`, and `domain` production
+packages were removed by the layered migration; `exception/domain` contains
+exception subtypes and is not a legacy domain layer.
 
 ## Build and artifact pipeline
 

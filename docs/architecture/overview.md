@@ -7,7 +7,9 @@ flowchart LR
   Controller[controller\nHTTP + DTO boundary]
   Service[service\nVerificationService + ProviderService]
   Repository[repository\nJdbcVerificationRepository + coordination]
-  ClientLayer[client\nFREE/PREMIUM ProviderClient]
+  ClientLayer[client\nProviderClient + typed clients]
+  Mapper[mapper\nexplicit conversions]
+  Errors[exception\nHTTP error mapping]
   DB[(PostgreSQL\nauthoritative state)]
   Redis[(Redis\ndistributed-only coordination)]
   Free[free-provider\nBun/Fastify]
@@ -17,11 +19,15 @@ flowchart LR
   Client --> Filter --> Controller --> Service
   Service --> Repository --> DB
   Service --> ClientLayer
-  Repository -. single-node: local .-> Service
-  Repository -. distributed: shared .-> Redis
+  Service -. service/entity mapping .-> Mapper
+  Controller -. DTO mapping .-> Mapper
+  Controller -. boundary errors .-> Errors
+  Repository -. single-node: local coordination .-> Local
+  Repository -. distributed: shared coordination/cache .-> Redis
   ClientLayer --> Free
   ClientLayer --> Premium
   Service -. observations .-> Metrics
+  Local[(Local coordination)]
 ```
 
 ## Boundaries
@@ -34,12 +40,14 @@ The backend is one Spring Boot Modulith module with conventional layers:
 | Controller | `com.incode.verification.controller` | Routes, request/response DTOs, inbound admission, and scheduled expiration trigger |
 | Service | `com.incode.verification.service` | Verification lifecycle, idempotency/conflict rules, provider fallback, recovery, storage orchestration, and expiration use case |
 | Repository | `com.incode.verification.repository` | PostgreSQL JDBC, local/Redis coordination, leases, caches, and rate-limit implementations |
-| Client | `com.incode.verification.client` | Typed FREE/PREMIUM HTTP clients, provider response mapping boundary, and resilience wrappers |
+| Client | `com.incode.verification.client` | `ProviderClient`, typed FREE/PREMIUM HTTP clients, provider wire DTOs, and resilience wrappers |
 | Mapper | `com.incode.verification.mapper` | Explicit DTO, service-model, entity, provider, and state conversions |
 | Exception | `com.incode.verification.exception` | Business/integration failures and `GlobalExceptionHandler` HTTP translation |
+| Utility | `com.incode.verification.util` | Small framework-free utilities such as UUID generation |
 
-Controllers depend on services. Services use repository and provider-client
-contracts, but do not depend on JDBC, Redis, Spring MVC, or provider wire DTOs.
+Controllers depend on services and `VerificationMapper`. Services use
+repository and provider-client contracts, but do not depend on JDBC, Redis,
+Spring MVC, or provider wire DTOs.
 Repository entities and provider DTOs stay inside their owning layers; mapper
 classes perform explicit conversions. `config` is the composition root for
 profile-specific implementations.

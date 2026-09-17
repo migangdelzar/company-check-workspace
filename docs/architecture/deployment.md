@@ -36,8 +36,8 @@ the simplest topology for local API exploration.
 
 ```mermaid
 flowchart LR
-  LoadBalancer[Internal caller / Locust] --> B1[backend replica 1\ncontroller + service]
-  LoadBalancer --> B2[backend replica 2\ncontroller + service]
+  Caller[Internal caller / Locust] --> B1[backend replica 1\ncontroller + service]
+  Caller --> B2[backend replica 2\ncontroller + service]
   B1 --> PG[(postgres)]
   B2 --> PG
   B1 --> Redis[(redis)]
@@ -49,9 +49,10 @@ flowchart LR
 ```
 
 The distributed Compose overlay removes the host-published backend port on
-purpose. It is an internal network topology; use the Locust service or a
+purpose; it does not provide a load balancer. Use the Locust service or a
 temporary internal-network client to exercise it. Redis shares coordination,
-rate limits, cache entries, and the expiration lease across replicas.
+rate limits, cache entries, and the expiration lease across replicas, while
+each replica keeps the same controller/service workflow.
 
 Development Compose accepts local image tags from `.env.example`. Release
 validation must provide digest-pinned image variables. The performance runner

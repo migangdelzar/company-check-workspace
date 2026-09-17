@@ -19,9 +19,11 @@ flowchart TD
   Release --> Stop
 ```
 
-The local profile uses an in-process lock. The distributed profile uses Redis
-with a random token, compare-and-delete release, and a bounded TTL. PostgreSQL
-remains the final authority, so a lost Redis lease cannot corrupt state.
+`config.ExpirationLockConfiguration` selects the in-process
+`LocalExpirationLock` for the local profile and the Redis-backed
+`RedisExpirationLock` for the distributed profile. Both use a random token,
+compare-and-delete release, and a bounded TTL. PostgreSQL remains the final
+authority, so a lost Redis lease cannot corrupt state.
 
 The scheduler runs once at application readiness and then at the configured
 fixed delay. Each pass drains full batches until fewer than 100 rows are

@@ -15,7 +15,9 @@ sequenceDiagram
   participant S as VerificationService
   participant R as JdbcVerificationRepository
   participant K as CoordinationRepository
-  participant H as ProviderService + ProviderClient
+  participant H as ProviderService
+  participant PC as ProviderClient
+  participant M as VerificationMapper
 
   C->>F: GET /backend-service
   F->>F: inbound rate-limit admission
@@ -40,7 +42,9 @@ sequenceDiagram
         alt reusable result exists
           S->>R: complete current record from shared result
         else provider lookup
-          S->>H: FREE then PREMIUM fallback, bounded HTTP
+          S->>H: resolve(normalized query)
+          H->>PC: FREE then PREMIUM fallback, bounded HTTP
+          PC-->>H: provider result/failure
           H-->>S: provider result/failure
           S->>R: claim and complete transactionally
           S->>K: publish terminal result after commit
@@ -49,6 +53,8 @@ sequenceDiagram
       end
     end
   end
+  Ctl->>M: map service result to response
+  M-->>Ctl: VerificationResponse
   Ctl-->>C: VerificationResponse
 ```
 
