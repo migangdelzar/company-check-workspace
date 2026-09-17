@@ -137,6 +137,28 @@ jobs:
           printf '%-22s %-6s %s\n' "e2e" "$e2e" "$(reason)"
           printf '%-22s %-6s %s\n' "stress" "$stress" "$(reason)"
           printf '==============================\n'
+          mkdir -p .ci-artifacts
+          cat >.ci-artifacts/ci-stage-plan.txt <<EOF
+          event: $EVENT
+          quality: $quality
+          security: $security
+          build: $build
+          e2e: $e2e
+          stress: $stress
+          image-variant: ${IV:-jvm}
+          topology: ${TOPO:-single}
+          users: ${USERS:-10}
+          spawn-rate: ${SPAWN:-2}
+          duration: ${DUR:-60s}
+          postgres: ${PGSQL:-postgres@sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73}
+          redis: ${REDIS:-redis@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf}
+          EOF
+      - name: Upload stage plan
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-stage-plan
+          path: .ci-artifacts/
+          if-no-files-found: error
 
   quality-workspace:
     name: quality · workspace
@@ -223,12 +245,14 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: service-test-reports-${{ github.run_id }}
+          name: service-test-reports
           path: |
             company-check-service/build/reports/tests
             company-check-service/build/test-results
             company-check-service/build/jacoco
             company-check-service/build/reports/jacoco
+            company-check-service/build/reports/checkstyle
+            company-check-service/build/reports/spotless
           if-no-files-found: warn
 
   quality-provider:
@@ -268,6 +292,16 @@ jobs:
             echo
             echo "Provider commit: $(git rev-parse --short HEAD)"
           } >>"$GITHUB_STEP_SUMMARY"
+      - name: Upload provider results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: provider-results
+          path: |
+            company-check-provider/junit.xml
+            company-check-provider/coverage
+            company-check-provider/build-logic/**/*.html
+          if-no-files-found: warn
 
   security-codeql-java:
     name: security · codeql · java
@@ -389,7 +423,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: security-filesystem-${{ github.run_id }}
+          name: security-filesystem
           path: trivy-filesystem.sarif
           if-no-files-found: warn
 
@@ -477,13 +511,13 @@ jobs:
           image: ${{ needs.build-images.outputs.service-image }}
           format: spdx-json
           output-file: security-image.spdx.json
-          artifact-name: security-image-${{ github.run_id }}.spdx.json
+          artifact-name: security-image.spdx.json
           upload-release-assets: false
       - name: Upload image scan report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: security-image-${{ github.run_id }}
+          name: security-image
           path: trivy-image.sarif
           if-no-files-found: warn
 
@@ -530,3 +564,46 @@ jobs:
       - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: high
+
+  collect-artifacts:
+    name: collect · artifacts
+    needs: [plan, quality-service, quality-provider, e2e-compose, stress-locust, security-filesystem, security-container]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Download all stage artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: ci-artifacts
+          run-id: ${{ github.run_id }}
+          github-token: ${{ github.token }}
+      - name: Index the bundle
+        shell: bash
+        run: |
+          {
+            echo "## Consolidated artifact bundle"
+            echo
+            echo "Run: \`${{ github.run_id }}\` · branch \`${{ github.ref_name }}\` · SHA \`${{ github.sha }}\`"
+            echo
+            echo "| Stage artifact | Contents |"
+            echo "|----------------|----------|"
+            echo "| ci-stage-plan | Decided stages, image variants, topology, load and infra pins |"
+            echo "| service-test-reports | Gradle test reports, JUnit XML, JaCoCo exec/xml/html (jacoco), checkstyle and spotless reports |"
+            echo "| provider-results | Provider test/coverage artifacts when produced |"
+            echo "| e2e-server-logs | Compose ps + backend container logs + verification responses |"
+            echo "| performance-results | Locust HTML report, request/response CSVs, and failure log when strict mode failed |"
+            echo ""
+            echo "### Files"
+            echo '```'
+            find ci-artifacts -type f | sed 's#^ci-artifacts/##' | sort
+            echo '```'
+          } >>"$GITHUB_STEP_SUMMARY"
+      - name: Upload consolidated bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-artifacts-${{ github.run_id }}
+          path: ci-artifacts/
+          if-no-files-found: error

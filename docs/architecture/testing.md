@@ -107,6 +107,10 @@ artifacts. Dependency-review runs on pull requests only after the repository
 dependency graph is available and the `DEPENDENCY_GRAPH_ENABLED` variable is set
 to `true`; it is intentionally not a required check. All composite and workflow
 actions are pinned to commits whose runtimes use Node 24 to stay clear of the
-deprecated Node 20 runner.
+deprecated Node 20 runner. Every stage publishes its reports as run
+artifacts (Gradle/JUnit/JaCoCo test reports, provider results, Compose backend
+server logs with verification responses, and Locust HTML/CSV), and the final
+`collect · artifacts` stage downloads them into a single consolidated
+`ci-artifacts-<run-id>` bundle with an index.
 For organization-owned repositories, configure the free `GITLEAKS_LICENSE`
 repository or organization secret so the Gitleaks action can scan history.

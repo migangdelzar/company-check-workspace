@@ -55,7 +55,7 @@ runs:
           exit_code=$?
           if (( exit_code != 0 )); then
             docker compose ps --all >&2 || true
-            docker compose logs --no-color --tail=200 backend free-provider premium-provider postgres >&2 || true
+            docker compose logs --no-color --tail=400 >&2 || true
           fi
           docker compose down >/dev/null 2>&1 || true
           exit "$exit_code"
@@ -98,3 +98,14 @@ runs:
           .status == "COMPLETED" and
           .company.cin == "CJQUNXGW"
         ' >/dev/null
+
+        mkdir -p .e2e-artifacts
+        {
+          printf '# verification id\n%s\n' "$verification_id"
+          printf '# verification start response\n%s\n' "$start_response"
+          printf '# verification result response\n%s\n' "$verification_response"
+        } | jq -c . >.e2e-artifacts/verification.json 2>/dev/null || \
+          { printf '# verification id\n%s\n\n# start\n%s\n\n# result\n%s\n' "$verification_id" "$start_response" "$verification_response" > .e2e-artifacts/verification.json; }
+        docker compose ps --all > .e2e-artifacts/compose-ps.txt 2>&1 || true
+        docker compose logs --no-color --tail=1000 > .e2e-artifacts/server.log 2>&1 || true
+        docker compose down >/dev/null 2>&1 || true

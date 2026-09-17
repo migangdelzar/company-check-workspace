@@ -57,4 +57,11 @@ jobs:
             echo "- Compose stack starts and the backend actuator health is reachable."
             echo "- A \`verify-start\` request completes and returns a matching verification id."
             echo "- A \`verify-result\` lookup returns the completed company details for the requested CIN."
+            echo "- Backend server logs are captured in the \`e2e-server-logs\` artifact. "
           } >>"$GITHUB_STEP_SUMMARY"
+      - name: Upload backend server logs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-server-logs
+          path: .e2e-artifacts/
+          if-no-files-found: error
