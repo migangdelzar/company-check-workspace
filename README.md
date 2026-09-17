@@ -11,8 +11,15 @@ The service accepts a verification ID and company query, coordinates duplicate
 work, calls the appropriate provider, stores the result in PostgreSQL, and
 exposes read-only retrieval.
 
-See [architecture](docs/architecture/README.md), including the [runtime architecture](docs/architecture/runtime-architecture.md) and [resilience/fallback reference](docs/architecture/resilience.md), and
-[ADRs](docs/adr/README.md) for the design rationale.
+This README is the setup guide: it covers prerequisites, local image builds,
+Compose profiles, health checks, API smoke calls, observability, performance,
+and shutdown. For implementation detail, use the focused references:
+
+- [Architecture index](docs/architecture/README.md) — all current architecture diagrams.
+- [Whole request flow](docs/architecture/request-flow.md) — admission, idempotency, coordination, provider calls, persistence, and retrieval.
+- [Resilience and fallback](docs/architecture/resilience.md) — filters, limiters, retries, circuits, bulkheads, pools, caches, leases, and failure handling.
+- [Runtime architecture](docs/architecture/runtime-architecture.md) — package boundaries, build artifacts, single/distributed topologies, and observability.
+- [ADRs](docs/adr/README.md) — the design rationale and trade-offs.
 
 For the complete prerequisite, image-build, Compose startup, health-check,
 profile, and shutdown sequence, see [Starting the application](docs/architecture/startup.md).
@@ -150,6 +157,43 @@ curl --fail --get http://localhost:8080/backend-service \
   --data-urlencode "query=Acme"
 curl --fail http://localhost:8080/verifications/"$verification_id"
 ```
+
+### What happens during a request
+
+`GET /backend-service` is handled in this order:
+
+1. `InboundRateLimitFilter` admits the start request before controller and
+   database work. Single node uses a local Resilience4j limiter; distributed
+   mode uses a Redis atomic fixed-window limiter. Rejection is `429` with
+   `Retry-After`; inability to coordinate admission is `503`.
+2. The application checks PostgreSQL for the verification ID. Reusing the ID
+   with the same normalized query is idempotent; reusing it with a different
+   query is a conflict. A new request is inserted as `IN_PROGRESS`.
+3. The application acquires a query lease. Single node uses an in-process
+   lock; distributed mode uses Redis. A competing request waits for a shared
+   terminal result or re-checks PostgreSQL after the bounded lease wait. This
+   prevents duplicate provider work across replicas.
+4. The lease owner checks PostgreSQL for a reusable completed result by
+   normalized query. Only when no reusable result exists does it call the
+   providers.
+5. The free provider is called first through the shared Apache HttpClient 5
+   pool. The call is bounded by retry, circuit-breaker, rate-limit, bulkhead,
+   connection-acquisition, connect, and response-time limits. A successful
+   response is mapped and normalized.
+6. `Unavailable`, `Timeout`, `Malformed`, circuit-open, bulkhead-rejected,
+   and quota-rejected outcomes invoke the premium provider fallback. A known
+   provider `4xx` is a client error and does not silently consume premium
+   capacity. If both providers fail, the final failure is returned/stored
+   according to the application error policy.
+7. The result is claimed and completed transactionally in PostgreSQL. Cache
+   publication happens only after commit: Caffeine is used locally and Redis
+   is added as shared coordination/cache state in distributed mode.
+
+`GET /verifications/{verificationId}` is read-only. It reads the verification
+lifecycle from PostgreSQL and never invokes a provider, consumes provider
+quota, or acquires a provider bulkhead permit. See the [whole request flow](docs/architecture/request-flow.md)
+and [resilience reference](docs/architecture/resilience.md) for sequence
+diagrams and failure semantics.
 
 Stop it without removing database volumes:
 
@@ -311,6 +355,8 @@ docker compose logs --no-color backend free-provider premium-provider
 ## Documentation
 
 - [Architecture overview](docs/architecture/overview.md)
+- [Runtime architecture](docs/architecture/runtime-architecture.md)
+- [Resilience and fallback](docs/architecture/resilience.md)
 - [Request flow](docs/architecture/request-flow.md)
 - [Expiration flow](docs/architecture/expiration-flow.md)
 - [Deployment topologies](docs/architecture/deployment.md)
