@@ -1,5 +1,10 @@
 # Current Architecture Documentation Refresh
 
+> **Completed design record.** This spec describes the documentation refresh
+> that established the current layered architecture references. The current
+> architecture pages and ADRs are authoritative; obsolete package names below
+> are retained only as search criteria for the completed refresh.
+
 ## Scope
 
 Refresh the workspace ADRs, architecture reference pages, Mermaid diagrams, and

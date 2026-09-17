@@ -1,5 +1,11 @@
 # Architectural & Structural Modernization Design
 
+> **Historical record — superseded proposal.** This design predates the
+> backend migration to the conventional layered structure. Its `adapter`,
+> `application`, and `domain` package names describe the proposal at that
+> date, not the checked-out implementation. See the current architecture
+> pages and ADR 0001 for the accepted layered design.
+
 | Field | Detail |
 |---|---|
 | Date | 2026-09-16 |

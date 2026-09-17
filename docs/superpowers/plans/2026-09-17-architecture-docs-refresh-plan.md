@@ -1,5 +1,10 @@
 # Architecture Documentation Refresh Implementation Plan
 
+> **Completed historical plan.** This plan records the earlier refresh that
+> aligned the workspace docs with the layered backend. Current architecture
+> guidance lives in `docs/architecture/` and `docs/adr/`; obsolete package names
+> in the checked-off steps describe migration work, not the current source tree.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Bring ADRs, architecture pages, Mermaid diagrams, and README architecture text into agreement with the current layered Spring Boot backend and unchanged Bun provider/runtime topologies.
