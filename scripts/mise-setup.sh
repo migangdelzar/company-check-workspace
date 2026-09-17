@@ -22,6 +22,9 @@ if [[ "$variant" == "native" ]]; then
   memory_gib=12
 fi
 
+default_paketo_builder_image='paketobuildpacks/builder-jammy-base@sha256:aadea5426b08ec201d62a74ac46b61c0452b9bd139806f071e4a81e362a43d83'
+default_paketo_run_image='paketobuildpacks/run-jammy-base@sha256:03a974a6e7b563878429117943f14139ff29f0f3d02aa7e3d3ab0ae862908168'
+
 require_command() {
   command -v "$1" >/dev/null 2>&1 || die "required command '$1' is not on PATH; run 'mise install --include-lazy' first"
 }
@@ -37,19 +40,24 @@ if [[ ! -f "$repo_root/.env" ]]; then
 fi
 
 properties_file="$repo_root/company-check-service/gradle.properties"
-[[ -f "$properties_file" ]] || die "missing $properties_file; copy gradle.properties.example and replace both Paketo placeholders with approved immutable references"
 
 paketo_reference() {
-  local property_name="$1"
-  local value
-  value="$(sed -n "s/^${property_name}=//p" "$properties_file" | head -n 1)"
-  if [[ ! "$value" =~ ^[^@[:space:]]+@sha256:[0-9A-Fa-f]{64}$ ]]; then
-    die "$property_name must be an approved image reference ending in @sha256:<64-hex-digest> in $properties_file"
+  local property_name="$1" environment_name="$2" default_image="$3" value
+  value="${!environment_name-}"
+  if [[ -z "$value" && -f "$properties_file" ]]; then
+    value="$(sed -n "s/^${property_name}=//p" "$properties_file" | head -n 1)"
   fi
+  if [[ -z "$value" || "$value" == *'<64-hex-digest>'* ]]; then
+    value="$default_image"
+  fi
+  [[ "$value" =~ ^[^@[:space:]]+@sha256:[0-9A-Fa-f]{64}$ ]] || {
+    die "$environment_name must be an immutable image reference ending in @sha256:<64 hex digits>"
+  }
+  printf -v "$environment_name" '%s' "$value"
 }
 
-paketo_reference paketoBuilderImage
-paketo_reference paketoRunImage
+paketo_reference paketoBuilderImage PAKETO_BUILDER_IMAGE "$default_paketo_builder_image"
+paketo_reference paketoRunImage PAKETO_RUN_IMAGE "$default_paketo_run_image"
 
 if ! docker info >/dev/null 2>&1; then
   if command -v colima >/dev/null 2>&1; then
@@ -85,6 +93,8 @@ gradle_args=(
   image
   "-PimageVariant=$variant"
   -PimageName=company-check-service:local
+  "-PpaketoBuilderImage=$PAKETO_BUILDER_IMAGE"
+  "-PpaketoRunImage=$PAKETO_RUN_IMAGE"
   --no-daemon
   --no-parallel
   --max-workers=1
