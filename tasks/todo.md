@@ -18,6 +18,9 @@
 - Stale-reference scan, Mermaid fence check, `git diff --check`, and both
   single/distributed Compose merges passed. The Docker CLI lacks the Compose
   plugin; standalone `docker-compose 5.1.4` passed the equivalent checks.
+- Provider `bun run quality` passed (30 tests). Java `fastCheck` could not reach
+  tests: the first run lacked locked artifacts locally, and the refresh retry
+  stopped on dependency verification for `kotlinx-coroutines-bom:1.8.0`.
 
 ## Working notes
 
