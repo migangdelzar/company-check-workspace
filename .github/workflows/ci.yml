@@ -38,7 +38,7 @@ jobs:
           matches() { printf '%s\n' "$changed" | grep -Eq "$1"; }
           printf 'service=%s\n' "$(matches '^(company-check-service/|\.github/workflows/component-quality\.yml)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
           printf 'provider=%s\n' "$(matches '^(company-check-provider/|\.github/workflows/component-quality\.yml)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          printf 'e2e=%s\n' "$(matches '^(compose\.yaml|\.env\.example|company-check-service/performance/|\.github/(actions/compose-e2e|workflows/(e2e|ci)\.yml))' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          printf 'e2e=%s\n' "$(matches '^(compose\.yaml|\.env\.example|\.github/(actions/compose-e2e|workflows/(e2e|ci)\.yml))' && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
   components:
     needs: changes

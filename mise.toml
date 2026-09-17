@@ -3,10 +3,6 @@ docker = "27.5.1"
 docker-compose = "2.35.1"
 colima = "0.8.1"
 
-[env]
-COMPANY_CHECK_SERVICE_COMMIT = "5786c8c43f2fdd2579f23242263b6686e85dd892"
-COMPANY_CHECK_PROVIDER_COMMIT = "f23d82b3ba590ded39dc7b79d8d38030dde49774"
-
 [tasks.validate]
 description = "Run the service fast verification gate"
 run = "company-check-service/gradlew fastCheck"
