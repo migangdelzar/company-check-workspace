@@ -34,6 +34,13 @@ configuration that consumes them; adapters may receive those immutable records
 through the composition root, while application services receive ports and
 plain application values.
 
+Application outcome exceptions live in `application.exception`, not beside the
+orchestration classes in `application.service`. This keeps service packages
+focused on use cases and lets the inbound web adapter translate application
+outcomes to HTTP problem details. Domain validation exceptions remain in their
+domain package, and provider transport exceptions remain inside the provider
+adapter.
+
 PostgreSQL is authoritative for verification identity, status, claims, expiry,
 and terminal results. Redis is optional in single-node mode and shared in the
 distributed profile. The provider service is a deterministic simulator used by

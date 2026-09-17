@@ -27,7 +27,9 @@ The package responsibilities are:
 | Package | Responsibility | Not allowed to own |
 |---|---|---|
 | `domain` | Verification lifecycle, provider results/failures, normalization, fallback decision | Spring, JDBC, Redis, HTTP, caching, infrastructure |
-| `application` | Use cases, ports, orchestration, PostgreSQL-first decisions | Concrete adapters or Spring configuration |
+| `application.port` | Inbound use-case contracts and outbound infrastructure ports | Concrete adapters or Spring configuration |
+| `application.exception` | Application-level outcomes shared by use cases and inbound adapters | HTTP transport types, provider transport exceptions, infrastructure details |
+| `application.service` | Use cases, orchestration, and PostgreSQL-first decisions | Exception type declarations, concrete adapters, or Spring configuration |
 | `adapter.in.web` | HTTP mapping, validation boundary, exception/problem responses, inbound admission filter | Business state transitions |
 | `adapter.in.scheduling` | Startup recovery and periodic expiration trigger | Persistence or lease implementation |
 | `adapter.out.persistence` | JdbcClient SQL, JSONB state codec, PostgreSQL mapping | Provider or HTTP policy |
@@ -41,6 +43,14 @@ Configuration properties are grouped under `configuration.application`,
 records are immutable configuration inputs; application services receive ports
 and plain values, while infrastructure adapters may receive the records from
 the composition root.
+
+Application exceptions are kept in `application.exception` so services describe
+outcomes without making `application.service` a catch-all package. The inbound
+HTTP adapter maps these exceptions to `ProblemDetail`. Domain exceptions, such
+as `domain.query.InvalidQueryException`, remain with the domain rule they
+protect; provider transport/contract exceptions remain in
+`adapter.out.provider` and are translated before crossing into the application
+boundary.
 
 ## Build and artifact pipeline
 
