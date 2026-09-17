@@ -1,8 +1,9 @@
 # Starting the Application
 
-This is the complete local startup path for the single-node profile. It uses
-Docker Compose for PostgreSQL, the provider simulators, and the Spring Boot
-backend.
+This is the complete local startup path for the single-node profile. The
+recommended interface is `mise`; it uses the existing Gradle/Paketo image
+contract and Docker Compose for PostgreSQL, the provider simulators, and the
+Spring Boot backend.
 
 ## Prerequisites
 
@@ -12,47 +13,57 @@ backend.
    git submodule update --init --recursive
    ```
 
-2. Install Java 25, Docker, Compose, and Bun. With `mise`:
+2. Install Java 25, Docker, Compose, Bun, and the optional Colima runtime with
+   `mise`:
 
    ```sh
    mise trust
    mise install --include-lazy
    ```
 
-3. Start or select a Docker runtime. Docker Desktop/Engine may already be
-   running. With the mise-managed Colima runtime:
+## Complete setup with mise
 
-   ```sh
-   colima start --cpu 4 --memory 4
-   ```
+Create the local Gradle properties file once, replace both Paketo placeholders
+with approved immutable references, then choose exactly one image path:
 
-## Build the local images
+```sh
+cp company-check-service/gradle.properties.example company-check-service/gradle.properties
+mise run setup-jvm
+# or: mise run setup-native
+```
 
-1. Create the local environment file:
+The setup task creates `.env` only when it is absent, runs the locked provider
+checks, builds `company-check-provider:local` and
+`company-check-service:local`, starts the single-node overlay, and waits for
+`/actuator/health`. It uses an existing Docker daemon first and starts Colima
+only when Docker is unavailable; it does not overwrite `.env`, Docker Desktop,
+or an existing Colima configuration.
 
-   ```sh
-   cp .env.example .env
-   ```
+Image-build memory guidance:
 
-2. Install and verify the provider, then build its image:
+| Image path | Setup gate | Guidance |
+|---|---:|---|
+| JVM | 4 GiB Docker memory | 2 GiB is a constrained lower-bound attempt and may fail from build overhead. |
+| Native | 12 GiB Docker memory | Native compilation runs with the GraalVM/native-image toolchain. |
 
-   ```sh
-   (cd company-check-provider && bun install --frozen-lockfile && bun run quality)
-   docker build -t company-check-provider:local company-check-provider
-   ```
+The runner checks the active daemon and reports the required allocation before
+building. These values are local operational recommendations, not hard Paketo
+minimums. See the [Paketo Java Native Image Buildpack reference](https://paketo.io/docs/reference/java-native-image-reference/).
 
-3. Build the backend image. Copy
-   `company-check-service/gradle.properties.example` to
-   `company-check-service/gradle.properties`, replace the two Paketo
-   `<64-hex-digest>` placeholders with approved immutable references, and run:
+## Manual image/build fallback
 
-   ```sh
-   ./company-check-service/gradlew -p company-check-service image \
-     -PimageName=company-check-service:local
-   ```
+When diagnosing a build, the equivalent lower-level commands are:
 
-   Alternatively, pass `-PpaketoBuilderImage` and `-PpaketoRunImage` with the
-   approved digest references instead of creating the local properties file.
+```sh
+(cd company-check-provider && bun install --frozen-lockfile && bun run quality)
+docker build -t company-check-provider:local company-check-provider
+./company-check-service/gradlew -p company-check-service image \
+  -PimageName=company-check-service:local
+```
+
+For a native image, add `-PimageVariant=native -PnativeOptimization=b`.
+Alternatively, pass the approved `-PpaketoBuilderImage` and
+`-PpaketoRunImage` values instead of storing them in the local properties file.
 
 ## Start and verify single-node mode
 

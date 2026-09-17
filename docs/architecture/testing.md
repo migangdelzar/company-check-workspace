@@ -15,6 +15,14 @@ flowchart LR
 
 ## Service checks
 
+- `mise run validate` invokes the service's `fastCheck` gate with the correct
+  Gradle project path.
+- `mise run service-full` invokes the complete `qualityGate`; it still needs
+  PostgreSQL and Redis Testcontainers.
+- `mise run provider` installs the locked Bun dependencies before running the
+  provider quality checks.
+- `mise run compose-check` renders both single-node and distributed Compose
+  overlays without starting containers.
 - `./company-check-service/gradlew -p company-check-service fastCheck` runs the
   service's local unit/quality bundle: formatting, static analysis, unit tests,
   and JaCoCo coverage.
@@ -39,6 +47,13 @@ flowchart LR
   override described in the workspace README.
 - Use `docker compose` where the Compose v2 plugin is installed; the equivalent
   `docker-compose` command is supported by the performance runner.
+
+The complete local image setup is available through `mise run setup-jvm` or
+`mise run setup-native`. Both build the provider and service images, start the
+single-node stack, and wait for health; they do not replace `qualityGate` or
+the performance runner. Allocate 4 GiB of Docker memory for the JVM setup and
+12 GiB for the native setup. The JVM path may be attempted with 2 GiB, but it
+is a constrained lower bound and can fail from Gradle/Paketo overhead.
 
 ## Performance checks
 

@@ -31,12 +31,10 @@ provider remains a separate deployable simulator.
 
 ## Requirements
 
-- Docker Engine and Docker Compose v2, or `mise` to install the pinned CLI,
-  Compose, and Colima versions.
-- Java 25 for the Gradle service build.
-- Bun for provider development checks.
-- `mise` is optional, but is the easiest way to install the workspace tools
-  and run the common commands.
+- Docker Engine and Compose, or `mise` to install the pinned CLI, Compose, and
+  Colima versions.
+- Java 25 and Bun for service/provider development checks.
+- `mise` is the recommended onboarding and task interface.
 - Git submodules initialized recursively.
 
 Initialize the workspace with:
@@ -45,32 +43,39 @@ Initialize the workspace with:
 git submodule update --init --recursive
 ```
 
-Choose one Docker runtime. If Docker Desktop or Docker Engine is already
-installed, let mise install only the CLI and Compose:
+## Complete local setup
 
-```sh
-mise trust
-mise install java bun docker-cli docker-compose
-```
-
-On macOS, if you want mise to install and manage Colima as the Docker runtime,
-install all three project tools, including the lazy Colima tool:
+Use one command for the JVM image path or one command for the native image
+path. Both commands install/verify the provider, build both local images with
+the existing Gradle/Paketo contract, start the single-node stack, and wait for
+the backend health endpoint:
 
 ```sh
 mise trust
 mise install --include-lazy
+cp company-check-service/gradle.properties.example company-check-service/gradle.properties
+# Replace both Paketo placeholders with approved @sha256:<64-hex> references.
+mise run setup-jvm
+# Or: mise run setup-native
 ```
 
-Then create the local environment and start the single-node stack:
+The setup runner creates `.env` from `.env.example` only when `.env` is absent;
+it never overwrites an existing environment or Docker configuration. It uses
+an existing Docker daemon, or starts Colima only when Docker is unavailable.
 
-```sh
-cp .env.example .env
-mise run start
-```
+Image builds need more memory than the running core stack. Use these Docker
+allocations before starting the setup command:
 
-`mise run start` uses an existing Docker daemon first, or starts Colima when
-it is installed and Docker is unavailable. It then launches PostgreSQL, the
-provider simulators, and the backend. The local `.env` is ignored by Git.
+| Image path | Setup gate | Guidance |
+|---|---:|---|
+| JVM | 4 GiB | 2 GiB is a constrained lower-bound attempt and may fail from Gradle/Paketo overhead. |
+| Native | 12 GiB | Native compilation includes the GraalVM/native-image toolchain and needs substantially more headroom. |
+
+The setup runner checks the active daemon and prints remediation when it is
+below the selected allocation. These are repository operational recommendations,
+not hard Paketo platform minimums. See the [Paketo Java Native Image
+Buildpack reference](https://paketo.io/docs/reference/java-native-image-reference/)
+for the native buildpack contract.
 
 ## Fast service verification
 
@@ -101,9 +106,10 @@ Provider checks are independent:
 (cd company-check-provider && bun install --frozen-lockfile && bun run quality)
 ```
 
-## Compose image configuration
+## Advanced/manual image build
 
-For local development, build local images and use local tags:
+The `mise` setup commands are preferred. Use the manual Gradle path when
+debugging image arguments or building without the complete onboarding flow:
 
 ```sh
 docker build -t company-check-provider:local company-check-provider
@@ -119,7 +125,7 @@ provisions a native-image-capable GraalVM toolchain for local
 Paketo by adding `-PimageVariant=native -PnativeOptimization=b` to the command
 above. Paketo provisions its native toolchain inside the builder container.
 
-Copy the workspace environment template:
+Then copy the workspace environment template if it was not created already:
 
 ```sh
 cp .env.example .env
@@ -209,7 +215,7 @@ diagrams and failure semantics.
 Stop it without removing database volumes:
 
 ```sh
-docker compose -f compose.yaml -f compose.single.yaml down --remove-orphans
+mise run stop
 ```
 
 ## Distributed topology
@@ -333,9 +339,12 @@ PERFORMANCE_TOPOLOGY=distributed \
 With `mise` installed:
 
 ```sh
+mise run setup-jvm
+# or: mise run setup-native
 mise run validate
 mise run service-full
 mise run provider
+mise run compose-check
 mise run start
 mise run start-distributed
 mise run performance
@@ -343,10 +352,10 @@ mise run logs
 mise run stop
 ```
 
-`mise run start` starts Colima when needed and launches the single-node
-stack using the local values in `.env`. Build or provide the local service
-and provider images first; `.env.example` contains the same safe defaults for
-new checkouts.
+`mise run setup-jvm` and `mise run setup-native` are complete setup flows.
+`mise run start` only starts an already-built single-node stack, while
+`mise run compose-check` validates both Compose overlays. `.env.example`
+contains safe local defaults for new checkouts.
 
 ## Troubleshooting
 
