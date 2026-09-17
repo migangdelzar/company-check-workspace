@@ -13,7 +13,8 @@ connections, provider quota, CPU, or memory.
 
 Enable Spring Boot virtual threads for request and scheduling execution. Keep
 scarce resources bounded independently: Hikari connections, provider HTTP pool,
-Resilience4j bulkheads/rate limits, Redis pool, and test worker forks. Use
+Resilience4j bulkheads/rate limits, Redis pool, repository coordination, and
+test worker forks. Use
 structured lifetimes through Spring-managed tasks and try-with-resources rather
 than introducing an application-wide custom structured-concurrency framework.
 

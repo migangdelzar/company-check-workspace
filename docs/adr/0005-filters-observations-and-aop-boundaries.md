@@ -21,6 +21,8 @@ ordering and failure semantics unclear.
   registered by `config.ObservabilityConfiguration`.
 - Keep idempotency and verification conflict logic in services and
   PostgreSQL, not in AOP advice.
+- Keep HTTP error conversion in `exception.handler.GlobalExceptionHandler`; it
+  is a controller boundary, not service workflow logic.
 
 ## Consequences
 

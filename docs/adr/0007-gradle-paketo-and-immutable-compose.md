@@ -11,8 +11,8 @@ Dockerfiles would duplicate Spring Boot runtime knowledge.
 
 ## Decision
 
-Use Gradle Kotlin DSL with the included `build-logic` convention plugins for service build logic,
-configuration/build caches, strict dependency verification, Spotless, Checkstyle,
+Use Gradle Kotlin DSL with the included `build-logic` convention plugins for
+service build logic, configuration/build caches, strict dependency verification, Spotless, Checkstyle,
 Detekt, Error Prone, NullAway, JaCoCo, and OpenAPI validation. Use Spring Boot's
 Paketo `bootBuildImage` integration for OCI images. Require builder, run, and
 Compose image inputs to be digest-pinned for CI/release validation. Permit

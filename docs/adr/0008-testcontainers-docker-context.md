@@ -12,7 +12,7 @@ Docker daemon cannot mount from inside its VM.
 ## Decision
 
 The Gradle test convention accepts `testcontainersDockerHost` or `DOCKER_HOST`
-and forwards it to every test worker. It also accepts
+and forwards it to every service test worker. It also accepts
 `testcontainersDockerSocketOverride` or
 `TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE` and forwards the VM-visible socket path.
 For Colima, the expected override is `/var/run/docker.sock`.

@@ -19,6 +19,11 @@ Keep two runtime profiles:
   Redis-backed rate limiting through `repository.ratelimit`, shared cache
   entries, and a TTL-based expiration lease.
 
+`CoordinationRepository` and `ExpirationLock` are the service-facing
+repository boundaries; `LocalCoordinationRepository`,
+`RedisCoordinationRepository`, and the Redis rate-limit implementations are
+selected by `config`.
+
 PostgreSQL remains authoritative. Redis may accelerate or coordinate work, but a
 Redis outage must not turn cached state into the source of truth.
 

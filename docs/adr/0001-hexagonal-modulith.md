@@ -1,5 +1,9 @@
 # ADR 0001: Layered Modulith Boundaries
 
+The filename is retained for link stability. The accepted implementation is
+layered; the former hexagonal package tree appears only as rejected historical
+context.
+
 - Status: Accepted
 - Date: 2026-09-16
 
@@ -19,12 +23,14 @@ Use one Spring Boot Modulith module organized as conventional layers:
   expiration scheduler.
 - `service` contains verification/provider workflows and `service/model` data.
 - `repository` contains JDBC persistence, coordination, leases, cache, and
-  rate-limit implementations.
+  rate-limit implementations, including `repository/coordination` and
+  `repository/ratelimit`.
 - `client` contains typed FREE/PREMIUM provider HTTP clients and wire DTOs.
 - `mapper` contains explicit conversions between layer representations.
 - `exception` contains application errors and HTTP error mapping.
 - `config` composes profiles, infrastructure beans, properties, and runtime
   hints.
+- `util` contains narrowly scoped utilities that do not own business workflow.
 
 Spring Modulith and layered architecture tests protect the package boundaries.
 
