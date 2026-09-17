@@ -15,8 +15,10 @@ Use Gradle Kotlin DSL with included convention plugins for service build logic,
 configuration/build caches, strict dependency verification, Spotless, Checkstyle,
 Detekt, Error Prone, NullAway, JaCoCo, and OpenAPI validation. Use Spring Boot's
 Paketo `bootBuildImage` integration for OCI images. Require builder, run, and
-Compose image inputs to be digest-pinned. Use Compose overlays for single-node
-and distributed topologies.
+Compose image inputs to be digest-pinned for CI/release validation. Permit
+local tags for development; the performance runner resolves local images to
+their repository digests before starting its Compose stack. Use Compose
+overlays for single-node and distributed topologies.
 
 ## Consequences
 

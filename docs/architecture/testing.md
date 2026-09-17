@@ -19,6 +19,8 @@ flowchart LR
 - Integration tests use PostgreSQL and Redis Testcontainers.
 - On Colima or another VM-backed Docker context, set the Docker host and socket
   override described in the workspace README.
+- Use `docker compose` where the Compose v2 plugin is installed; the equivalent
+  `docker-compose` command is supported by the performance runner.
 
 ## Performance checks
 

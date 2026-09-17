@@ -34,5 +34,6 @@ purpose. It is an internal network topology; use the Locust service or a
 temporary internal-network client to exercise it. Redis shares coordination,
 rate limits, cache entries, and the expiration lease across replicas.
 
-Compose requires digest-pinned image variables. The all-zero values in
-`.env.example` are placeholders and must not be used as release images.
+Development Compose accepts local image tags from `.env.example`. Release
+validation must provide digest-pinned image variables. The performance runner
+resolves local images to repository digests before starting its Compose stack.
