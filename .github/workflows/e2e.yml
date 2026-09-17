@@ -26,10 +26,43 @@ concurrency:
 jobs:
   e2e:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
-      - uses: ./.github/actions/compose-e2e
+      - name: Check out workspace and runtime fixtures
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Run Compose API end-to-end checks
+        uses: ./.github/actions/compose-e2e
         with:
           service-image: ${{ inputs.service-image }}
           provider-image: ${{ inputs.provider-image }}
           postgres-image: ${{ inputs.postgres-image }}
           redis-image: ${{ inputs.redis-image }}
+      - name: Summarize Compose E2E run
+        shell: bash
+        run: |
+          {
+            echo "## Compose E2E run"
+            echo
+            echo "| Component | Immutable image |"
+            echo "|-----------|-----------------|"
+            echo "| service | \`${{ inputs.service-image }}\` |"
+            echo "| provider | \`${{ inputs.provider-image }}\` |"
+            echo "| postgres | \`${{ inputs.postgres-image }}\` |"
+            echo "| redis | \`${{ inputs.redis-image }}\` |"
+            echo
+            echo "Validated with the verification API:"
+            echo "- Compose stack starts and the backend actuator health is reachable."
+            echo "- A \`verify-start\` request completes and returns a matching verification id."
+            echo "- A \`verify-result\` lookup returns the completed company details for the requested CIN."
+            echo "- Backend server logs are captured in the \`e2e-server-logs\` artifact. "
+          } >>"$GITHUB_STEP_SUMMARY"
+      - name: Upload backend server logs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-server-logs
+          path: .e2e-artifacts/
+          if-no-files-found: error
+          include-hidden-files: true

@@ -1,0 +1,152 @@
+name: Performance stress test
+
+on:
+  workflow_dispatch:
+    inputs:
+      service-image:
+        description: Immutable service image reference
+        required: true
+        type: string
+      provider-image:
+        description: Immutable provider image reference
+        required: true
+        type: string
+      postgres-image:
+        description: Immutable PostgreSQL image reference
+        required: true
+        type: string
+      redis-image:
+        description: Immutable Redis image reference
+        required: true
+        type: string
+      locust-image:
+        description: Immutable Locust load-test image reference
+        required: false
+        default: locustio/locust@sha256:878af5232072a7379157ddfbb87a63a4be54c854f7bee4626aab4831fcadb88c
+        type: string
+      topology:
+        description: Compose topology to exercise
+        required: true
+        default: single
+        type: choice
+        options:
+          - single
+          - distributed
+      users:
+        description: Locust concurrent users
+        required: true
+        default: "10"
+        type: string
+      spawn-rate:
+        description: Locust users spawned per second
+        required: true
+        default: "2"
+        type: string
+      duration:
+        description: Bounded Locust duration, for example 60s
+        required: true
+        default: 60s
+        type: string
+  workflow_call:
+    inputs:
+      service-image:
+        required: true
+        type: string
+      provider-image:
+        required: true
+        type: string
+      postgres-image:
+        required: true
+        type: string
+      redis-image:
+        required: true
+        type: string
+      locust-image:
+        required: false
+        default: locustio/locust@sha256:878af5232072a7379157ddfbb87a63a4be54c854f7bee4626aab4831fcadb88c
+        type: string
+      topology:
+        required: false
+        default: single
+        type: string
+      users:
+        required: false
+        default: "10"
+        type: string
+      spawn-rate:
+        required: false
+        default: "2"
+        type: string
+      duration:
+        required: false
+        default: 60s
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workspace-performance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stress:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out workspace and performance fixtures
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Cache infrastructure and load-test images
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .infra-images/postgres.tar
+            .infra-images/redis.tar
+            .infra-images/locust.tar
+          key: infra-${{ runner.os }}-${{ inputs.postgres-image }}-${{ inputs.redis-image }}-${{ inputs.locust-image }}
+      - name: Load or pull infrastructure and load-test images
+        env:
+          POSTGRES_IMAGE: ${{ inputs.postgres-image }}
+          REDIS_IMAGE: ${{ inputs.redis-image }}
+          LOCUST_IMAGE: ${{ inputs.locust-image }}
+        run: |
+          set -euo pipefail
+          load_or_pull() {
+            local name="$1" image="$2"
+            if [[ -f ".infra-images/${name}.tar" ]]; then
+              docker load --input ".infra-images/${name}.tar"
+            else
+              mkdir -p .infra-images
+              docker pull --quiet "$image"
+              docker save --output ".infra-images/${name}.tar" "$image"
+            fi
+          }
+          load_or_pull postgres "$POSTGRES_IMAGE"
+          load_or_pull redis "$REDIS_IMAGE"
+          load_or_pull locust "$LOCUST_IMAGE"
+      - name: Execute bounded Locust performance validation
+        env:
+          COMPANY_CHECK_SERVICE_IMAGE: ${{ inputs.service-image }}
+          COMPANY_CHECK_PROVIDER_IMAGE: ${{ inputs.provider-image }}
+          POSTGRES_IMAGE: ${{ inputs.postgres-image }}
+          REDIS_IMAGE: ${{ inputs.redis-image }}
+          LOCUST_IMAGE: ${{ inputs.locust-image }}
+          PERFORMANCE_TOPOLOGY: ${{ inputs.topology }}
+          PERFORMANCE_USERS: ${{ inputs.users }}
+          PERFORMANCE_SPAWN_RATE: ${{ inputs.spawn-rate }}
+          PERFORMANCE_DURATION: ${{ inputs.duration }}
+          PERFORMANCE_STRICT_HTTP: "true"
+          PERFORMANCE_REQUESTS: ""
+          PERFORMANCE_ARTIFACTS_DIR: .performance-artifacts
+        run: ./company-check-service/performance/run.sh
+      - name: Publish Locust performance artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: performance-results
+          path: .performance-artifacts/
+          if-no-files-found: warn
+          include-hidden-files: true

@@ -1,0 +1,44 @@
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+discovery.docker "company_check" {
+  host = "unix:///var/run/docker.sock"
+}
+
+loki.source.docker "company_check" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.docker.company_check.targets
+  labels     = { job = "docker" }
+  forward_to = [loki.write.company_check.receiver]
+}
+
+loki.write "company_check" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+
+otelcol.receiver.otlp "company_check" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+
+  output {
+    traces = [otelcol.exporter.otlp.tempo.input]
+  }
+}
+
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = "tempo:4317"
+    tls {
+      insecure = true
+    }
+  }
+}

@@ -4,59 +4,607 @@ on:
   pull_request:
   push:
   workflow_dispatch:
+    inputs:
+      stage-quality:
+        description: Run quality gates (workspace, service, provider)
+        required: false
+        default: true
+        type: boolean
+      stage-security:
+        description: Run security jobs (CodeQL, secrets, filesystem, image)
+        required: false
+        default: true
+        type: boolean
+      stage-build:
+        description: Build and publish immutable validation images
+        required: false
+        default: true
+        type: boolean
+      stage-e2e:
+        description: Run the Compose API end-to-end suite
+        required: false
+        default: true
+        type: boolean
+      stage-stress:
+        description: Run the bounded Locust performance validation
+        required: false
+        default: true
+        type: boolean
+      image-variant:
+        description: Image variant to build and validate
+        required: false
+        default: jvm
+        type: choice
+        options:
+          - jvm
+          - native
+      topology:
+        description: Compose topology to exercise under load
+        required: false
+        default: single
+        type: choice
+        options:
+          - single
+          - distributed
+      users:
+        description: Locust concurrent users
+        required: false
+        default: "10"
+        type: string
+      spawn-rate:
+        description: Locust users spawned per second
+        required: false
+        default: "2"
+        type: string
+      duration:
+        description: Bounded Locust duration, for example 60s
+        required: false
+        default: 60s
+        type: string
+      postgres-image:
+        description: Immutable PostgreSQL image reference for E2E and Locust
+        required: false
+        type: string
+      redis-image:
+        description: Immutable Redis image reference for E2E and Locust
+        required: false
+        type: string
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
-  group: workspace-ci-${{ github.workflow }}-${{ github.ref }}
+  group: workspace-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  workspace-gates:
+  plan:
+    name: plan · decide
     runs-on: ubuntu-24.04
-    steps:
-      - uses: ./.github/actions/checkout-workspace
-      - name: Check workspace contract and topology gates
-        shell: bash
-        run: ./workspace-validate.sh
-
-  changes:
-    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     outputs:
-      service: ${{ steps.paths.outputs.service }}
-      provider: ${{ steps.paths.outputs.provider }}
-      e2e: ${{ steps.paths.outputs.e2e }}
+      quality: ${{ steps.decide.outputs.quality }}
+      security: ${{ steps.decide.outputs.security }}
+      build: ${{ steps.decide.outputs.build }}
+      e2e: ${{ steps.decide.outputs.e2e }}
+      stress: ${{ steps.decide.outputs.stress }}
+      image-variant: ${{ steps.decide.outputs.image-variant }}
+      topology: ${{ steps.decide.outputs.topology }}
+      users: ${{ steps.decide.outputs.users }}
+      spawn-rate: ${{ steps.decide.outputs.spawn-rate }}
+      duration: ${{ steps.decide.outputs.duration }}
+      postgres: ${{ steps.decide.outputs.postgres }}
+      redis: ${{ steps.decide.outputs.redis }}
     steps:
-      - uses: ./.github/actions/checkout-workspace
-      - id: paths
+      - name: Decide which stages run
+        id: decide
         shell: bash
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          EVENT: ${{ github.event_name }}
+          Q: ${{ inputs.stage-quality }}
+          S: ${{ inputs.stage-security }}
+          B: ${{ inputs.stage-build }}
+          E: ${{ inputs.stage-e2e }}
+          T: ${{ inputs.stage-stress }}
+          IV: ${{ inputs.image-variant }}
+          TOPO: ${{ inputs.topology }}
+          USERS: ${{ inputs.users }}
+          SPAWN: ${{ inputs.spawn-rate }}
+          DUR: ${{ inputs.duration }}
+          PGSQL: ${{ inputs.postgres-image }}
+          REDIS: ${{ inputs.redis-image }}
         run: |
-          changed="$(git diff --name-only "$BASE_SHA" "$GITHUB_SHA")"
-          matches() { printf '%s\n' "$changed" | grep -Eq "$1"; }
-          printf 'service=%s\n' "$(matches '^(company-check-service/|\.github/workflows/component-quality\.yml)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          printf 'provider=%s\n' "$(matches '^(company-check-provider/|\.github/workflows/component-quality\.yml)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          printf 'e2e=%s\n' "$(matches '^(compose\.yaml|e2e/|scripts/compose-|\.env\.example|\.github/(actions/compose-e2e|workflows/(e2e|ci)\.yml))' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          quality="${Q:-true}"
+          security="${S:-true}"
+          build="${B:-true}"
+          e2e="${E:-true}"
+          stress="${T:-true}"
+          printf 'quality=%s\nsecurity=%s\nbuild=%s\ne2e=%s\nstress=%s\n' \
+            "$quality" "$security" "$build" "$e2e" "$stress" >>"$GITHUB_OUTPUT"
+          printf 'image-variant=%s\n' "${IV:-jvm}" >>"$GITHUB_OUTPUT"
+          printf 'topology=%s\n' "${TOPO:-single}" >>"$GITHUB_OUTPUT"
+          printf 'users=%s\nspawn-rate=%s\nduration=%s\n' "${USERS:-10}" "${SPAWN:-2}" "${DUR:-60s}" >>"$GITHUB_OUTPUT"
+          printf 'postgres=%s\n' "${PGSQL:-postgres@sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73}" >>"$GITHUB_OUTPUT"
+          printf 'redis=%s\n' "${REDIS:-redis@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf}" >>"$GITHUB_OUTPUT"
+          reason() { [[ "$EVENT" == "workflow_dispatch" ]] && echo "dispatch input" || echo "push/PR default"; }
+          printf '\n===== CI stage plan (%s) =====\n' "$EVENT"
+          printf '%-22s %-6s %s\n' "stage" "run?" "reason"
+          printf '%-22s %-6s %s\n' "quality" "$quality" "$(reason)"
+          printf '%-22s %-6s %s\n' "security" "$security" "$(reason)"
+          printf '%-22s %-6s %s\n' "build" "$build" "$(reason)"
+          printf '%-22s %-6s %s\n' "e2e" "$e2e" "$(reason)"
+          printf '%-22s %-6s %s\n' "stress" "$stress" "$(reason)"
+          printf '==============================\n'
+          mkdir -p .ci-artifacts
+          cat >.ci-artifacts/ci-stage-plan.txt <<EOF
+          event: $EVENT
+          quality: $quality
+          security: $security
+          build: $build
+          e2e: $e2e
+          stress: $stress
+          image-variant: ${IV:-jvm}
+          topology: ${TOPO:-single}
+          users: ${USERS:-10}
+          spawn-rate: ${SPAWN:-2}
+          duration: ${DUR:-60s}
+          postgres: ${PGSQL:-postgres@sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73}
+          redis: ${REDIS:-redis@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf}
+          EOF
+      - name: Upload stage plan
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-stage-plan
+          path: .ci-artifacts/
+          if-no-files-found: error
+          include-hidden-files: true
 
-  components:
-    needs: changes
-    if: needs.changes.outputs.service == 'true' || needs.changes.outputs.provider == 'true'
-    strategy:
-      fail-fast: false
-      matrix:
-        component: [service, provider]
-    uses: ./.github/workflows/component-quality.yml
+  quality-workspace:
+    name: quality · workspace
+    needs: plan
+    if: needs.plan.outputs.quality == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout workspace with submodules
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Set up Java 25 and Gradle cache
+        uses: ./.github/actions/setup-java
+        with:
+          java-versions: '25'
+      - name: Validate workspace contract and submodule topology
+        working-directory: company-check-service
+        run: ./gradlew fastCheck
+
+  quality-service:
+    name: quality · service
+    needs: plan
+    if: needs.plan.outputs.quality == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout workspace with submodules
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Set up Java toolchains and Gradle cache
+        uses: ./.github/actions/setup-java
+      - name: Run full service quality suite
+        working-directory: company-check-service
+        run: ./gradlew check
+      - name: Summarize service quality suites
+        if: always()
+        working-directory: company-check-service
+        shell: bash
+        run: |
+          {
+            echo "## Service quality suites (\`./gradlew check\`)"
+            echo
+            echo "| Suite | Tests | Failures | Errors | Skipped |"
+            echo "|-------|-------|----------|--------|---------|"
+            probe() {
+              local name="$1"
+              local dir="build/test-results/$name"
+              if ls "$dir"/*.xml >/dev/null 2>&1; then
+                local row
+                row=$(awk '
+                  BEGIN { t = 0; f = 0; e = 0; s = 0 }
+                  /<testsuite / {
+                    for (i = 1; i <= NF; i++) {
+                      if ($i ~ /^tests=/)     { gsub(/[^0-9]/, "", $i); t += $i }
+                      if ($i ~ /^failures=/)  { gsub(/[^0-9]/, "", $i); f += $i }
+                      if ($i ~ /^errors=/)    { gsub(/[^0-9]/, "", $i); e += $i }
+                      if ($i ~ /^skipped=/)   { gsub(/[^0-9]/, "", $i); s += $i }
+                    }
+                  }
+                  END { printf "%s|%s|%s|%s", t, f, e, s }
+                ' "$dir"/*.xml)
+                local IFS='|'
+                read -r t f e s <<<"$row"
+                echo "| $name | $t | $f | $e | $s |"
+              else
+                echo "| $name | not produced | | | |"
+              fi
+            }
+            probe test
+            probe integrationTest
+            probe contractTest
+            probe e2eTest
+            echo
+            echo "- Unit tests run the model, service, and workflow logic on the JVM."
+            echo "- Integration tests use Testcontainers PostgreSQL and Redis."
+            echo "- Contract tests exercise the HTTP boundary against the service contract."
+            echo "- E2E tests assemble and exercise the service against containers."
+          } >>"$GITHUB_STEP_SUMMARY"
+      - name: Upload service test reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: service-test-reports
+          path: |
+            company-check-service/build/reports/tests
+            company-check-service/build/test-results
+            company-check-service/build/jacoco
+            company-check-service/build/reports/jacoco
+            company-check-service/build/reports/checkstyle
+            company-check-service/build/reports/spotless
+          if-no-files-found: warn
+
+  quality-provider:
+    name: quality · provider
+    needs: plan
+    if: needs.plan.outputs.quality == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout workspace with submodules
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Set up Bun and dependency cache
+        uses: ./.github/actions/setup-bun
+      - name: Run provider quality suite
+        working-directory: company-check-provider
+        run: |
+          bun install --frozen-lockfile
+          bun run quality
+          bun run test:contract
+      - name: Summarize provider quality suites
+        if: always()
+        working-directory: company-check-provider
+        shell: bash
+        run: |
+          {
+            echo "## Provider quality suites"
+            echo
+            echo "- \`format:check\`: Prettier formatting."
+            echo "- \`typecheck\`: TypeScript type safety (tsc --noEmit)."
+            echo "- \`lint\`: ESLint rules."
+            echo "- \`test\`: Bun unit tests (test/*.test.ts)."
+            echo "- \`test:contract\`: Bun contract tests against the provider boundary."
+            echo "- \`build\`: production TypeScript compilation."
+            echo
+            echo "Provider commit: $(git rev-parse --short HEAD)"
+          } >>"$GITHUB_STEP_SUMMARY"
+      - name: Upload provider results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: provider-results
+          path: |
+            company-check-provider/junit.xml
+            company-check-provider/coverage
+            company-check-provider/build-logic/**/*.html
+          if-no-files-found: warn
+
+  security-codeql-java:
+    name: security · codeql · java
+    needs: plan
+    if: needs.plan.outputs.security == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout workspace with submodules
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Set up Java 25 and Gradle cache
+        uses: ./.github/actions/setup-java
+        with:
+          java-versions: '25'
+      - uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+        with:
+          languages: java
+          build-mode: manual
+      - name: Build analyzed source
+        run: ./company-check-service/gradlew -p company-check-service classes --no-parallel --max-workers=1
+      - uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+        with:
+          category: /language:java
+
+  security-codeql-js:
+    name: security · codeql · javascript-typescript
+    needs: plan
+    if: needs.plan.outputs.security == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout workspace with submodules
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Set up Bun and dependency cache
+        uses: ./.github/actions/setup-bun
+      - uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+        with:
+          languages: javascript-typescript
+          build-mode: none
+      - name: Build analyzed source
+        run: cd company-check-provider && bun install --frozen-lockfile && bun run build
+      - uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+        with:
+          category: /language:javascript-typescript
+
+  security-secrets:
+    name: security · secrets
+    needs: plan
+    if: needs.plan.outputs.security == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout workspace with submodules
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  security-filesystem:
+    name: security · filesystem
+    needs: plan
+    if: needs.plan.outputs.security == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout workspace with submodules
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Report source, dependency, secret, and configuration findings
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-filesystem.sarif
+          scanners: vuln,secret,misconfig
+          vuln-type: os,library
+          ignore-unfixed: true
+          exit-code: '0'
+      - name: Fail on high and critical filesystem findings
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          scanners: vuln,secret,misconfig
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Upload filesystem findings to code scanning
+        if: always() && hashFiles('trivy-filesystem.sarif') != ''
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+        with:
+          sarif_file: trivy-filesystem.sarif
+          category: trivy-filesystem
+      - name: Upload filesystem report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: security-filesystem
+          path: trivy-filesystem.sarif
+          if-no-files-found: warn
+
+  security-dependency-integrity:
+    name: security · dependency-integrity
+    needs: plan
+    if: needs.plan.outputs.security == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout workspace with submodules
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Set up Java toolchains and Gradle cache
+        uses: ./.github/actions/setup-java
+      - name: Set up Bun and dependency cache
+        uses: ./.github/actions/setup-bun
+      - name: Verify Gradle dependency locks and signatures
+        working-directory: company-check-service
+        run: ./gradlew qualityGate --dependency-verification=strict --no-parallel --max-workers=1
+      - name: Verify Bun lockfile and production compilation
+        working-directory: company-check-provider
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+
+  build-images:
+    name: build · images
+    needs: plan
+    if: needs.plan.outputs.build == 'true'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/build-images.yml
     with:
-      component: ${{ matrix.component }}
+      image-variant: ${{ needs.plan.outputs.image-variant }}
 
-  e2e:
-    needs: changes
-    if: needs.changes.outputs.e2e == 'true'
+  security-container:
+    name: security · container
+    needs: [plan, build-images]
+    if: needs.plan.outputs.security == 'true' && needs.plan.outputs.build == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout workspace with submodules
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Scan built JVM image for vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ needs.build-images.outputs.service-image }}
+          format: sarif
+          output: trivy-image.sarif
+          vuln-type: os,library
+          ignore-unfixed: true
+          exit-code: '0'
+      - name: Fail on high and critical image vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ needs.build-images.outputs.service-image }}
+          format: table
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Upload image findings to code scanning
+        if: always() && hashFiles('trivy-image.sarif') != ''
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-image
+      - name: Generate SPDX image SBOM
+        if: always()
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          image: ${{ needs.build-images.outputs.service-image }}
+          format: spdx-json
+          output-file: security-image.spdx.json
+          artifact-name: security-image.spdx.json
+          upload-release-assets: false
+      - name: Upload image scan report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: security-image
+          path: trivy-image.sarif
+          if-no-files-found: warn
+
+  e2e-compose:
+    name: e2e · compose
+    needs: [plan, build-images]
+    if: needs.plan.outputs.e2e == 'true' && needs.plan.outputs.build == 'true'
     uses: ./.github/workflows/e2e.yml
     with:
-      service-image: ${{ vars.COMPANY_CHECK_SERVICE_IMAGE }}
-      provider-image: ${{ vars.COMPANY_CHECK_PROVIDER_IMAGE }}
-      postgres-image: ${{ vars.POSTGRES_IMAGE }}
-      redis-image: ${{ vars.REDIS_IMAGE }}
+      service-image: ${{ needs.build-images.outputs.service-image }}
+      provider-image: ${{ needs.build-images.outputs.provider-image }}
+      postgres-image: ${{ needs.plan.outputs.postgres }}
+      redis-image: ${{ needs.plan.outputs.redis }}
+
+  stress-locust:
+    name: stress · locust
+    needs: [plan, e2e-compose, build-images]
+    if: needs.plan.outputs.stress == 'true' && needs.plan.outputs.e2e == 'true'
+    uses: ./.github/workflows/performance.yml
+    with:
+      service-image: ${{ needs.build-images.outputs.service-image }}
+      provider-image: ${{ needs.build-images.outputs.provider-image }}
+      postgres-image: ${{ needs.plan.outputs.postgres }}
+      redis-image: ${{ needs.plan.outputs.redis }}
+      topology: ${{ needs.plan.outputs.topology }}
+      users: ${{ needs.plan.outputs.users }}
+      spawn-rate: ${{ needs.plan.outputs.spawn-rate }}
+      duration: ${{ needs.plan.outputs.duration }}
+
+  review-dependencies:
+    name: review · dependencies
+    needs: plan
+    # Opt-in, not a required check. GitHub's dependency graph must first be
+    # available for this repository (Settings ▸ Code security and analysis, or
+    # a few hours after creation for public repos). Set the
+    # DEPENDENCY_GRAPH_ENABLED repository variable to true only then.
+    if: github.event_name == 'pull_request' && vars.DEPENDENCY_GRAPH_ENABLED == 'true' && needs.plan.outputs.security == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+
+  collect-artifacts:
+    name: collect · artifacts
+    needs: [plan, quality-service, quality-provider, e2e-compose, stress-locust, security-filesystem, security-container]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Download all stage artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: ci-artifacts
+          run-id: ${{ github.run_id }}
+          github-token: ${{ github.token }}
+      - name: Index the bundle
+        shell: bash
+        run: |
+          {
+            echo "## Consolidated artifact bundle"
+            echo
+            echo "Run: \`${{ github.run_id }}\` · branch \`${{ github.ref_name }}\` · SHA \`${{ github.sha }}\`"
+            echo
+            echo "| Stage artifact | Contents |"
+            echo "|----------------|----------|"
+            echo "| ci-stage-plan | Decided stages, image variants, topology, load and infra pins |"
+            echo "| service-test-reports | Gradle test reports, JUnit XML, JaCoCo exec/xml/html (jacoco), checkstyle and spotless reports |"
+            echo "| provider-results | Provider test/coverage artifacts when produced |"
+            echo "| e2e-server-logs | Compose ps + backend container logs + verification responses |"
+            echo "| performance-results | Locust HTML report, request/response CSVs, and failure log when strict mode failed |"
+            echo ""
+            echo "### Files"
+            echo '```'
+            find ci-artifacts -type f | sed 's#^ci-artifacts/##' | sort
+            echo '```'
+          } >>"$GITHUB_STEP_SUMMARY"
+      - name: Upload consolidated bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-artifacts-${{ github.run_id }}
+          path: ci-artifacts/
+          if-no-files-found: error

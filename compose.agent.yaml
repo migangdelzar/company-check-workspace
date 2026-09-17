@@ -1,0 +1,13 @@
+# Local-only override used to capture GraalVM native-image agent hints.
+# Publishes the infrastructure services to the host so a locally launched
+# application (run with -agentlib:native-image-agent) can reach them.
+# Not intended for committed or production use.
+services:
+  postgres:
+    ports: ["5432:5432"]
+  free-provider:
+    ports: ["8081:3000"]
+  premium-provider:
+    ports: ["8082:3000"]
+  redis:
+    ports: ["6379:6379"]

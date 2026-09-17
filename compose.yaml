@@ -1,29 +1,33 @@
 name: ${COMPOSE_PROJECT_NAME:-company-check}
 services:
   backend:
-    image: ${COMPANY_CHECK_SERVICE_IMAGE:?set COMPANY_CHECK_SERVICE_IMAGE}
+    image: ${COMPANY_CHECK_SERVICE_IMAGE:-company-check-service:local}
     ports: ["${COMPANY_CHECK_SERVICE_PORT:-8080}:8080"]
+    deploy:
+      resources:
+        limits:
+          cpus: "${BACKEND_CPU_LIMIT:-1.0}"
+          memory: ${BACKEND_MEMORY_LIMIT:-1536M}
     environment:
       SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/${COMPANY_CHECK_DB_NAME:-company_check}"
       SPRING_DATASOURCE_USERNAME: "${COMPANY_CHECK_DB_USER:-company_check}"
-      SPRING_DATASOURCE_PASSWORD: "${COMPANY_CHECK_DB_PASSWORD:?set a local database password}"
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: "6379"
-      VERIFICATION_FREE_BASE_URL: http://free-provider:3000
-      VERIFICATION_FREE_PATH: "/free-third-party?query={query}"
-      VERIFICATION_PREMIUM_BASE_URL: http://premium-provider:3000
-      VERIFICATION_PREMIUM_PATH: "/premium-third-party?query={query}"
+      SPRING_DATASOURCE_PASSWORD: "${COMPANY_CHECK_DB_PASSWORD:-change-me-locally}"
+      SPRING_PROFILES_ACTIVE: "${SPRING_PROFILES_ACTIVE:-single-node}"
+      JAVA_TOOL_OPTIONS: "${JAVA_TOOL_OPTIONS:-}"
+      OTEL_SERVICE_NAME: "${OTEL_SERVICE_NAME:-company-check-service}"
+      OTEL_METRICS_EXPORTER: "${OTEL_METRICS_EXPORTER:-none}"
+      OTEL_TRACES_EXPORTER: "${OTEL_TRACES_EXPORTER:-none}"
+      OTEL_LOGS_EXPORTER: "${OTEL_LOGS_EXPORTER:-none}"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-}"
+      VERIFICATION_PROVIDERS_FREE_BASE_URL: http://free-provider:3000
+      VERIFICATION_PROVIDERS_FREE_PATH: "/free-third-party?query={query}"
+      VERIFICATION_PROVIDERS_PREMIUM_BASE_URL: http://premium-provider:3000
+      VERIFICATION_PROVIDERS_PREMIUM_PATH: "/premium-third-party?query={query}"
     networks: [internal]
     depends_on:
       postgres: { condition: service_healthy }
-      redis: { condition: service_healthy }
       free-provider: { condition: service_healthy }
       premium-provider: { condition: service_healthy }
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/actuator/health >/dev/null"]
-      interval: 5s
-      timeout: 3s
-      retries: 12
   backend-debug:
     extends:
       service: backend
@@ -32,9 +36,14 @@ services:
       - "${COMPANY_CHECK_DEBUG_PORT:-8081}:8080"
       - "${COMPANY_CHECK_JDWP_PORT:-5005}:5005"
     environment:
-      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:${COMPANY_CHECK_JDWP_TARGET_PORT:-5005}"
+      JAVA_TOOL_OPTIONS: "${JAVA_TOOL_OPTIONS:-} -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:${COMPANY_CHECK_JDWP_TARGET_PORT:-5005}"
   free-provider:
-    image: ${COMPANY_CHECK_PROVIDER_IMAGE:?set COMPANY_CHECK_PROVIDER_IMAGE}
+    image: ${COMPANY_CHECK_PROVIDER_IMAGE:-company-check-provider:local}
+    deploy:
+      resources:
+        limits:
+          cpus: "${PROVIDER_CPU_LIMIT:-0.25}"
+          memory: ${PROVIDER_MEMORY_LIMIT:-256M}
     environment:
       PROVIDER_TIER: free
       PROVIDER_SCENARIO_FILE: /app/config/scenarios/free.json
@@ -46,7 +55,12 @@ services:
       timeout: 3s
       retries: 12
   premium-provider:
-    image: ${COMPANY_CHECK_PROVIDER_IMAGE:?set COMPANY_CHECK_PROVIDER_IMAGE}
+    image: ${COMPANY_CHECK_PROVIDER_IMAGE:-company-check-provider:local}
+    deploy:
+      resources:
+        limits:
+          cpus: "${PROVIDER_CPU_LIMIT:-0.25}"
+          memory: ${PROVIDER_MEMORY_LIMIT:-256M}
     environment:
       PROVIDER_TIER: premium
       PROVIDER_SCENARIO_FILE: /app/config/scenarios/premium.json
@@ -58,72 +72,31 @@ services:
       timeout: 3s
       retries: 12
   postgres:
-    image: ${POSTGRES_IMAGE:?set POSTGRES_IMAGE}
+    image: ${POSTGRES_IMAGE:-postgres:17-alpine}
+    deploy:
+      resources:
+        limits:
+          cpus: "${POSTGRES_CPU_LIMIT:-0.50}"
+          memory: ${POSTGRES_MEMORY_LIMIT:-512M}
     environment:
       POSTGRES_DB: ${COMPANY_CHECK_DB_NAME:-company_check}
       POSTGRES_USER: ${COMPANY_CHECK_DB_USER:-company_check}
-      POSTGRES_PASSWORD: ${COMPANY_CHECK_DB_PASSWORD:?set a local database password}
+      POSTGRES_PASSWORD: ${COMPANY_CHECK_DB_PASSWORD:-change-me-locally}
     networks: [internal]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 3s
       retries: 12
-  redis:
-    image: ${REDIS_IMAGE:?set REDIS_IMAGE}
-    networks: [internal]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 12
-  prometheus:
-    image: ${PROMETHEUS_IMAGE:?set PROMETHEUS_IMAGE}
-    profiles: [observability]
-    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus", "--storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-24h}", "--storage.tsdb.retention.size=${PROMETHEUS_RETENTION_SIZE:-512MB}"]
-    volumes: [prometheus-data:/prometheus, ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro]
-    networks: [internal]
-    depends_on: { backend: { condition: service_healthy } }
-  mimir:
-    image: ${MIMIR_IMAGE:?set MIMIR_IMAGE}
-    profiles: [observability]
-    command: [-config.file=/etc/mimir/config.yml]
-    volumes: [mimir-data:/data, ./observability/mimir/config.yml:/etc/mimir/config.yml:ro]
-    networks: [internal]
-  loki:
-    image: ${LOKI_IMAGE:?set LOKI_IMAGE}
-    profiles: [observability]
-    command: [-config.file=/etc/loki/config.yml]
-    volumes: [loki-data:/loki, ./observability/loki/config.yml:/etc/loki/config.yml:ro]
-    networks: [internal]
-  tempo:
-    image: ${TEMPO_IMAGE:?set TEMPO_IMAGE}
-    profiles: [observability]
-    command: [-config.file=/etc/tempo/config.yml]
-    volumes: [tempo-data:/var/tempo, ./observability/tempo/config.yml:/etc/tempo/config.yml:ro]
-    networks: [internal]
-  grafana:
-    image: ${GRAFANA_IMAGE:?set GRAFANA_IMAGE}
-    profiles: [observability]
-    environment: { GF_AUTH_ANONYMOUS_ENABLED: "true", GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer, GF_USERS_ALLOW_SIGN_UP: "false", GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:-change-me-locally}" }
-    ports: ["${GRAFANA_PORT:-3000}:3000"]
-    volumes: [grafana-data:/var/lib/grafana, ./observability/grafana/provisioning:/etc/grafana/provisioning:ro, ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro]
-    networks: [internal]
-    depends_on: [prometheus, mimir, loki, tempo]
   locust:
-    image: ${LOCUST_IMAGE:?set LOCUST_IMAGE}
+    image: ${LOCUST_IMAGE:-locustio/locust:2.32.10}
     profiles: [performance]
     command: ["-f", "/mnt/performance/locustfile.py", "--host", "http://backend:8080"]
     volumes:
-      - ./performance:/mnt/performance:ro
+      - ./company-check-service/performance:/mnt/performance:ro
       - ${PERFORMANCE_ARTIFACTS_DIR:-.performance-artifacts}:/mnt/artifacts
     networks: [internal]
-    depends_on: { backend: { condition: service_healthy } }
+    depends_on: { backend: { condition: service_started } }
 networks:
-  internal: { internal: true }
-volumes:
-  prometheus-data:
-  mimir-data:
-  loki-data:
-  tempo-data:
-  grafana-data:
+  internal:
+    internal: ${COMPOSE_INTERNAL_NETWORK:-false}

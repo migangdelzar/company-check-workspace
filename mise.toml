@@ -1,7 +1,183 @@
-[env]
-COMPANY_CHECK_SERVICE_COMMIT = "51a87333c11df15f8f6c0f10e9ebb5bef5f09a83"
-COMPANY_CHECK_PROVIDER_COMMIT = "ba38a652a51f1057b733c84f6d6464d6558d5902"
+[tools]
+java = "25"
+bun = "1.3"
+docker-cli = "29.3.1"
+docker-compose = "5.1.4"
+colima = { version = "0.10.1", lazy = true }
+
+[settings]
+task.run_auto_install = true
+
+[tasks.install]
+description = "Initialize submodules, install pinned tools, and prepare the environment"
+run = """
+git submodule update --init --recursive
+mise install
+if [ ! -f .env ]; then
+  cp .env.example .env
+  echo "Created .env from .env.example"
+fi
+"""
+
+[tasks.trust]
+description = "Trust the local mise configuration"
+run = "mise trust"
+
+[tasks.tools]
+description = "List installed tool versions"
+run = "mise ls"
+
+[tasks.current]
+description = "Show active tool versions for this project"
+run = "mise current"
+
+[tasks.outdated]
+description = "Check for newer versions of the pinned tools"
+run = "mise outdated"
+
+[tasks.env]
+description = "Create .env from .env.example when it is absent"
+run = """
+if [ ! -f .env ]; then
+  cp .env.example .env
+  echo "Created .env from .env.example"
+else
+  echo ".env already exists; left unchanged"
+fi
+"""
+
+[tasks.doctor]
+description = "Verify mise tools, Docker runtime, submodules, and local env"
+run = "scripts/mise-doctor.sh"
+
+[tasks.setup-jvm]
+description = "Build JVM images and start the single-node stack"
+run = "scripts/mise-setup.sh jvm"
+
+[tasks.setup-native]
+description = "Build native images and start the single-node stack"
+run = "scripts/mise-setup.sh native"
+
+[tasks.build-jvm]
+description = "Build JVM service and provider images without starting the stack"
+run = "scripts/mise-setup.sh jvm --build-only"
+
+[tasks.build-native]
+description = "Build native service and provider images without starting the stack"
+run = "scripts/mise-setup.sh native --build-only"
+
+[tasks.image-smoke]
+description = "Build the service image and run the bounded Docker smoke check"
+run = "scripts/mise-gradle.sh containerCheck"
 
 [tasks.validate]
-description = "Check the workspace contract"
-run = "./workspace-validate.sh"
+description = "Run the service fast verification gate"
+run = "./company-check-service/gradlew -p company-check-service fastCheck"
+
+[tasks.service-full]
+description = "Run the complete service verification gate"
+run = "scripts/mise-gradle.sh qualityGate"
+
+[tasks.integration]
+description = "Run the service integration test suite"
+run = "scripts/mise-gradle.sh integrationCheck"
+
+[tasks.contract]
+description = "Run the service API contract tests and OpenAPI validation"
+run = "scripts/mise-gradle.sh contractCheck"
+
+[tasks.e2e]
+description = "Run the service E2E test suite"
+run = "scripts/mise-gradle.sh e2eCheck"
+
+[tasks.openapi]
+description = "Validate the checked-in OpenAPI contracts"
+run = "scripts/mise-gradle.sh openApiValidate"
+
+[tasks.provider]
+description = "Run provider formatting, type, lint and test checks"
+run = "cd company-check-provider && bun install --frozen-lockfile && bun run quality"
+
+[tasks.provider-security]
+description = "Scan the provider for high and critical vulnerabilities"
+run = "cd company-check-provider && bun install --frozen-lockfile && bun run security"
+
+[tasks.provider-licenses]
+description = "Verify provider dependency licenses"
+run = "cd company-check-provider && bun run licenses"
+
+[tasks.verify]
+description = "Run every provider and service gate (fast + containers + contracts)"
+run = """
+mise run service-full
+mise run provider
+mise run provider-security
+mise run compose-check
+"""
+
+[tasks.compose-check]
+description = "Validate single-node, distributed, and observability Compose configurations"
+run = """
+docker-compose -f compose.yaml -f compose.single.yaml config >/dev/null
+docker-compose -f compose.yaml -f compose.distributed.yaml config >/dev/null
+docker-compose -f compose.yaml -f compose.single.yaml -f compose.observability.yaml \
+  --profile observability config >/dev/null
+"""
+
+[tasks.start]
+description = "Start the single-node Compose stack (starts Colima when needed)"
+run = "scripts/mise-docker.sh ensure 4 && docker-compose -f compose.yaml -f compose.single.yaml up -d --scale backend=1"
+
+[tasks.start-distributed]
+description = "Start the distributed Compose stack with shared Redis"
+run = "scripts/mise-docker.sh ensure 4 && docker-compose -f compose.yaml -f compose.distributed.yaml up -d --scale backend=2"
+
+[tasks.start-observability]
+description = "Start the single-node stack with Prometheus, Grafana, Tempo, Loki, and Alloy"
+run = "scripts/mise-docker.sh ensure 6 && docker-compose -f compose.yaml -f compose.single.yaml -f compose.observability.yaml --profile observability up -d --scale backend=1"
+
+[tasks.performance]
+description = "Run the service-owned Locust workload (single-node topology)"
+run = "company-check-service/performance/run.sh"
+
+[tasks.performance-distributed]
+description = "Run the Locust workload against the distributed topology"
+run = "PERFORMANCE_TOPOLOGY=distributed company-check-service/performance/run.sh"
+
+[tasks.ps]
+description = "Show the single-node Compose stack status"
+run = "docker-compose -f compose.yaml -f compose.single.yaml ps"
+
+[tasks.health]
+description = "Check the single-node backend health endpoint"
+run = "curl --fail --silent --show-error http://localhost:8080/actuator/health"
+
+[tasks.smoke]
+description = "Run a verification through the current API shape"
+run = """
+verification_id="$(uuidgen)"
+curl --fail --get http://localhost:8080/backend-service \
+  --data-urlencode "verificationId=$verification_id" \
+  --data-urlencode "query=Acme"
+echo
+curl --fail http://localhost:8080/verifications/"$verification_id"
+"""
+
+[tasks.logs]
+description = "Follow single-node service logs"
+run = "docker-compose -f compose.yaml -f compose.single.yaml logs -f backend free-provider premium-provider"
+
+[tasks.stop]
+description = "Stop the single-node and distributed Compose stacks"
+run = """
+docker-compose -f compose.yaml -f compose.single.yaml down --remove-orphans
+docker-compose -f compose.yaml -f compose.distributed.yaml down --remove-orphans
+"""
+
+[tasks.clean]
+description = "Stop all stacks, remove Compose volumes, and untag local images"
+run = """
+docker-compose -f compose.yaml -f compose.single.yaml down --remove-orphans -v
+docker-compose -f compose.yaml -f compose.distributed.yaml down --remove-orphans -v
+docker rmi company-check-service:local company-check-provider:local 2>/dev/null || true
+"""

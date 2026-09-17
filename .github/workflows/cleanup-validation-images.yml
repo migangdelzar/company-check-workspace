@@ -1,0 +1,42 @@
+name: Cleanup validation images
+
+on:
+  schedule:
+    - cron: '17 3 * * 0'
+  workflow_dispatch:
+    inputs:
+      retention-days:
+        description: Delete validation image versions older than this many days
+        required: true
+        default: '7'
+        type: string
+
+permissions:
+  packages: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Delete expired validation image versions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          RETENTION_DAYS: ${{ inputs.retention-days || '7' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RETENTION_DAYS" =~ ^[0-9]+$ ]]
+          cutoff="$(date -u -d "-${RETENTION_DAYS} days" +%s)"
+          for package in company-check-service company-check-provider; do
+            gh api --paginate "users/${OWNER}/packages/container/${package}/versions?per_page=100" \
+              --jq '.[] | select(.metadata.container.tags | any(startswith("validation-"))) | [.id, .created_at] | @tsv' |
+              while IFS=$'\t' read -r version_id created_at; do
+                [[ -n "$version_id" ]] || continue
+                created="$(date -u -d "$created_at" +%s)"
+                if (( created < cutoff )); then
+                  gh api --method DELETE "users/${OWNER}/packages/container/${package}/versions/${version_id}"
+                fi
+              done
+          done

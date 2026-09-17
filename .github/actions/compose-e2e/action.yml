@@ -1,5 +1,5 @@
-name: Compose E2E
-description: Run workspace E2E against explicitly supplied immutable image digests
+name: Compose API E2E
+description: Start an immutable-image Compose stack and validate the verification API
 inputs:
   service-image:
     description: Immutable service image reference
@@ -16,12 +16,96 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: ./.github/actions/checkout-workspace
-    - name: Run digest-based E2E
+    - name: Cache PostgreSQL and Redis images
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          .infra-images/postgres.tar
+          .infra-images/redis.tar
+        key: infra-${{ runner.os }}-${{ inputs.postgres-image }}-${{ inputs.redis-image }}
+    - name: Load or pull infrastructure images
+      shell: bash
+      env:
+        POSTGRES_IMAGE: ${{ inputs.postgres-image }}
+        REDIS_IMAGE: ${{ inputs.redis-image }}
+      run: |
+        set -euo pipefail
+        load_or_pull() {
+          local name="$1" image="$2"
+          if [[ -f ".infra-images/${name}.tar" ]]; then
+            docker load --input ".infra-images/${name}.tar"
+          else
+            mkdir -p .infra-images
+            docker pull --quiet "$image"
+            docker save --output ".infra-images/${name}.tar" "$image"
+          fi
+        }
+        load_or_pull postgres "$POSTGRES_IMAGE"
+        load_or_pull redis "$REDIS_IMAGE"
+    - name: Start Compose dependencies and verify the verification API
       shell: bash
       env:
         COMPANY_CHECK_SERVICE_IMAGE: ${{ inputs.service-image }}
         COMPANY_CHECK_PROVIDER_IMAGE: ${{ inputs.provider-image }}
         POSTGRES_IMAGE: ${{ inputs.postgres-image }}
         REDIS_IMAGE: ${{ inputs.redis-image }}
-      run: ./scripts/compose-e2e.sh
+      run: |
+        set -euo pipefail
+        cleanup() {
+          exit_code=$?
+          if (( exit_code != 0 )); then
+            docker compose ps --all >&2 || true
+            docker compose logs --no-color --tail=400 >&2 || true
+          fi
+          docker compose down >/dev/null 2>&1 || true
+          exit "$exit_code"
+        }
+        trap cleanup EXIT
+        docker compose up -d
+        timeout_seconds="${COMPOSE_WAIT_TIMEOUT_SECONDS:-120}"
+        deadline=$((SECONDS + timeout_seconds))
+        while (( SECONDS < deadline )); do
+          status="$(docker compose ps --all --format '{{.Service}} {{.State}} {{.Health}}')"
+          case "$status" in
+            *" exited "*|*" dead "*) printf '%s\n' "$status" >&2; exit 1 ;;
+          esac
+          if curl --fail --silent http://localhost:8080/actuator/health >/dev/null; then
+            break
+          fi
+        done
+        if (( SECONDS >= deadline )); then
+          docker compose ps --all
+          curl --fail --show-error http://localhost:8080/actuator/health || true
+          exit 1
+        fi
+
+        verification_id="$(uuidgen)"
+        start_response="$(curl --fail --silent --show-error --get \
+          --data-urlencode "verificationId=${verification_id}" \
+          --data-urlencode "query=CJQUNXGW" \
+          http://localhost:8080/backend-service)"
+        printf '%s' "$start_response" | jq -e --arg id "$verification_id" '
+          .verificationId == $id and
+          .status == "COMPLETED" and
+          .provider == "FREE" and
+          .company.cin == "CJQUNXGW"
+        ' >/dev/null
+
+        verification_response="$(curl --fail --silent --show-error \
+          "http://localhost:8080/verifications/${verification_id}")"
+        printf '%s' "$verification_response" | jq -e --arg id "$verification_id" '
+          .verificationId == $id and
+          .status == "COMPLETED" and
+          .company.cin == "CJQUNXGW"
+        ' >/dev/null
+
+        mkdir -p .e2e-artifacts
+        {
+          printf '# verification id\n%s\n' "$verification_id"
+          printf '# verification start response\n%s\n' "$start_response"
+          printf '# verification result response\n%s\n' "$verification_response"
+        } | jq -c . >.e2e-artifacts/verification.json 2>/dev/null || \
+          { printf '# verification id\n%s\n\n# start\n%s\n\n# result\n%s\n' "$verification_id" "$start_response" "$verification_response" > .e2e-artifacts/verification.json; }
+        docker compose ps --all > .e2e-artifacts/compose-ps.txt 2>&1 || true
+        docker compose logs --no-color --tail=1000 > .e2e-artifacts/server.log 2>&1 || true
+        docker compose down >/dev/null 2>&1 || true

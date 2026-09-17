@@ -7,7 +7,7 @@ servers: [{url: /}]
 security: []
 paths:
   /backend-service:
-    post:
+    get:
       operationId: submitVerification
       parameters:
         - {$ref: '#/components/parameters/VerificationId'}

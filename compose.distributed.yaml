@@ -1,0 +1,22 @@
+services:
+  backend:
+    environment:
+      SPRING_PROFILES_ACTIVE: "${SPRING_PROFILES_ACTIVE:-distributed}"
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+    ports: !reset []
+    depends_on:
+      redis: { condition: service_healthy }
+  redis:
+    image: ${REDIS_IMAGE:-redis:7-alpine}
+    deploy:
+      resources:
+        limits:
+          cpus: "${REDIS_CPU_LIMIT:-0.25}"
+          memory: ${REDIS_MEMORY_LIMIT:-256M}
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12

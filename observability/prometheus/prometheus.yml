@@ -1,14 +1,11 @@
 global:
-  scrape_interval: 15s
-  external_labels: { workspace: company-check }
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
 scrape_configs:
   - job_name: company-check-backend
     metrics_path: /actuator/prometheus
-    static_configs: [{ targets: [backend:8080] }]
-    metric_relabel_configs:
-      - action: labeldrop
-        regex: "(uri|path|url|trace_id|span_id|request_id|company_id|user_id|token|password|authorization|email)"
-      - action: labelkeep
-        regex: "^(job|instance|application|service|method|status|outcome|exception|error|workspace)$"
-remote_write:
-  - url: http://mimir:9009/api/v1/push
+    static_configs:
+      - targets: [backend:8080]
+        labels:
+          service: company-check-service
