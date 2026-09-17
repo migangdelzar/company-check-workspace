@@ -1,5 +1,5 @@
-name: Compose E2E
-description: Run workspace E2E against explicitly supplied immutable image digests
+name: Compose API E2E
+description: Start an immutable-image Compose stack and validate the verification API
 inputs:
   service-image:
     description: Immutable service image reference
@@ -16,7 +16,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Start and verify the Compose stack
+    - name: Start Compose dependencies and verify the verification API
       shell: bash
       env:
         COMPANY_CHECK_SERVICE_IMAGE: ${{ inputs.service-image }}
