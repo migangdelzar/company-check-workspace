@@ -21,8 +21,16 @@ flowchart LR
   Gradle project path.
 - `mise run service-full` invokes the complete `qualityGate`; it still needs
   PostgreSQL and Redis Testcontainers.
+- `mise run integration`, `mise run contract`, `mise run e2e`, and
+  `mise run openapi` run the individual service suites/gates directly.
 - `mise run provider` installs the locked Bun dependencies before running the
   provider quality checks.
+- `mise run provider-security` and `mise run provider-licenses` run the Trivy
+  and Licensee checks.
+- `mise run verify` runs the service gate, provider quality, provider security,
+  and Compose overlays in one pass.
+- `mise run image-smoke` builds the service image and runs the bounded Docker
+  smoke check.
 - `mise run compose-check` renders the single-node, distributed, and
   observability Compose overlays without starting containers.
 - `./company-check-service/gradlew -p company-check-service fastCheck` runs the
@@ -45,9 +53,10 @@ flowchart LR
   transport types from leaking across boundaries.
 - Build artifacts are checked through `bootJar`, Paketo image validation, image
   smoke checks, dependency locks, and dependency verification metadata.
-- On Colima or another VM-backed Docker context, `mise run service-full` exports
-  the Docker host and socket override automatically. For manual `gradlew` runs,
-  set the override described in the workspace README.
+- On Colima or another VM-backed Docker context, `mise run service-full`
+  exports the Docker host and socket override automatically (the shared
+  `scripts/mise-gradle.sh` helper applies it to every service Gradle task).
+  For manual `gradlew` runs, set the override described in the workspace README.
 - Use `docker compose` where the Compose v2 plugin is installed; the equivalent
   `docker-compose` command is supported by the performance runner.
 
@@ -94,7 +103,10 @@ Security results (CodeQL, Gitleaks, Trivy filesystem/image, dependency-lock
 verification, and SPDX SBOM generation) are reported to code scanning with SARIF
 uploads and workflow artifacts. High and critical vulnerabilities fail the
 relevant job; lower-severity findings remain available in SARIF and workflow
-artifacts. Dependency-review runs on pull requests once the repository variable
-`DEPENDENCY_GRAPH_ENABLED` is `true` and the dependency graph is enabled.
+artifacts. Dependency-review runs on pull requests only after the repository
+dependency graph is available and the `DEPENDENCY_GRAPH_ENABLED` variable is set
+to `true`; it is intentionally not a required check. All composite and workflow
+actions are pinned to commits whose runtimes use Node 24 to stay clear of the
+deprecated Node 20 runner.
 For organization-owned repositories, configure the free `GITLEAKS_LICENSE`
 repository or organization secret so the Gitleaks action can scan history.

@@ -29,7 +29,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Check out workspace and runtime fixtures
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           fetch-depth: 0
@@ -40,3 +40,21 @@ jobs:
           provider-image: ${{ inputs.provider-image }}
           postgres-image: ${{ inputs.postgres-image }}
           redis-image: ${{ inputs.redis-image }}
+      - name: Summarize Compose E2E run
+        shell: bash
+        run: |
+          {
+            echo "## Compose E2E run"
+            echo
+            echo "| Component | Immutable image |"
+            echo "|-----------|-----------------|"
+            echo "| service | \`${{ inputs.service-image }}\` |"
+            echo "| provider | \`${{ inputs.provider-image }}\` |"
+            echo "| postgres | \`${{ inputs.postgres-image }}\` |"
+            echo "| redis | \`${{ inputs.redis-image }}\` |"
+            echo
+            echo "Validated with the verification API:"
+            echo "- Compose stack starts and the backend actuator health is reachable."
+            echo "- A \`verify-start\` request completes and returns a matching verification id."
+            echo "- A \`verify-result\` lookup returns the completed company details for the requested CIN."
+          } >>"$GITHUB_STEP_SUMMARY"

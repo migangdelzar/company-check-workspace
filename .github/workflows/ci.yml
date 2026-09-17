@@ -146,7 +146,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout workspace with submodules
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           fetch-depth: 0
@@ -166,7 +166,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout workspace with submodules
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           fetch-depth: 0
@@ -175,6 +175,61 @@ jobs:
       - name: Run full service quality suite
         working-directory: company-check-service
         run: ./gradlew check
+      - name: Summarize service quality suites
+        if: always()
+        working-directory: company-check-service
+        shell: bash
+        run: |
+          {
+            echo "## Service quality suites (\`./gradlew check\`)"
+            echo
+            echo "| Suite | Tests | Failures | Errors | Skipped |"
+            echo "|-------|-------|----------|--------|---------|"
+            probe() {
+              local name="$1"
+              local dir="build/test-results/$name"
+              if ls "$dir"/*.xml >/dev/null 2>&1; then
+                local row
+                row=$(awk '
+                  BEGIN { t = 0; f = 0; e = 0; s = 0 }
+                  /<testsuite / {
+                    for (i = 1; i <= NF; i++) {
+                      if ($i ~ /^tests=/)     { gsub(/[^0-9]/, "", $i); t += $i }
+                      if ($i ~ /^failures=/)  { gsub(/[^0-9]/, "", $i); f += $i }
+                      if ($i ~ /^errors=/)    { gsub(/[^0-9]/, "", $i); e += $i }
+                      if ($i ~ /^skipped=/)   { gsub(/[^0-9]/, "", $i); s += $i }
+                    }
+                  }
+                  END { printf "%s|%s|%s|%s", t, f, e, s }
+                ' "$dir"/*.xml)
+                local IFS='|'
+                read -r t f e s <<<"$row"
+                echo "| $name | $t | $f | $e | $s |"
+              else
+                echo "| $name | not produced | | | |"
+              fi
+            }
+            probe test
+            probe integrationTest
+            probe contractTest
+            probe e2eTest
+            echo
+            echo "- Unit tests run the model, service, and workflow logic on the JVM."
+            echo "- Integration tests use Testcontainers PostgreSQL and Redis."
+            echo "- Contract tests exercise the HTTP boundary against the service contract."
+            echo "- E2E tests assemble and exercise the service against containers."
+          } >>"$GITHUB_STEP_SUMMARY"
+      - name: Upload service test reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: service-test-reports-${{ github.run_id }}
+          path: |
+            company-check-service/build/reports/tests
+            company-check-service/build/test-results
+            company-check-service/build/jacoco
+            company-check-service/build/reports/jacoco
+          if-no-files-found: warn
 
   quality-provider:
     name: quality · provider
@@ -184,7 +239,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout workspace with submodules
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           fetch-depth: 0
@@ -196,6 +251,23 @@ jobs:
           bun install --frozen-lockfile
           bun run quality
           bun run test:contract
+      - name: Summarize provider quality suites
+        if: always()
+        working-directory: company-check-provider
+        shell: bash
+        run: |
+          {
+            echo "## Provider quality suites"
+            echo
+            echo "- \`format:check\`: Prettier formatting."
+            echo "- \`typecheck\`: TypeScript type safety (tsc --noEmit)."
+            echo "- \`lint\`: ESLint rules."
+            echo "- \`test\`: Bun unit tests (test/*.test.ts)."
+            echo "- \`test:contract\`: Bun contract tests against the provider boundary."
+            echo "- \`build\`: production TypeScript compilation."
+            echo
+            echo "Provider commit: $(git rev-parse --short HEAD)"
+          } >>"$GITHUB_STEP_SUMMARY"
 
   security-codeql-java:
     name: security · codeql · java
@@ -208,7 +280,7 @@ jobs:
       security-events: write
     steps:
       - name: Checkout workspace with submodules
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           fetch-depth: 0
@@ -237,7 +309,7 @@ jobs:
       security-events: write
     steps:
       - name: Checkout workspace with submodules
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           fetch-depth: 0
@@ -261,7 +333,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout workspace with submodules
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           fetch-depth: 0
@@ -281,7 +353,7 @@ jobs:
       security-events: write
     steps:
       - name: Checkout workspace with submodules
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           fetch-depth: 0
@@ -315,7 +387,7 @@ jobs:
           category: trivy-filesystem
       - name: Upload filesystem report
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: security-filesystem-${{ github.run_id }}
           path: trivy-filesystem.sarif
@@ -329,7 +401,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout workspace with submodules
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           fetch-depth: 0
@@ -368,7 +440,7 @@ jobs:
       security-events: write
     steps:
       - name: Checkout workspace with submodules
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           fetch-depth: 0
@@ -409,7 +481,7 @@ jobs:
           upload-release-assets: false
       - name: Upload image scan report
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: security-image-${{ github.run_id }}
           path: trivy-image.sarif
@@ -444,6 +516,10 @@ jobs:
   review-dependencies:
     name: review · dependencies
     needs: plan
+    # Opt-in, not a required check. GitHub's dependency graph must first be
+    # available for this repository (Settings ▸ Code security and analysis, or
+    # a few hours after creation for public repos). Set the
+    # DEPENDENCY_GRAPH_ENABLED repository variable to true only then.
     if: github.event_name == 'pull_request' && vars.DEPENDENCY_GRAPH_ENABLED == 'true' && needs.plan.outputs.security == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -451,6 +527,6 @@ jobs:
       contents: read
       pull-requests: read
     steps:
-      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: high
