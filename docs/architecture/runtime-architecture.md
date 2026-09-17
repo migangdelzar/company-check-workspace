@@ -77,9 +77,10 @@ flowchart LR
 - Gradle Kotlin DSL and included `build-logic` own build conventions.
 - Dependency locking/verification, Spotless, Checkstyle, Detekt, Error Prone,
   NullAway, JaCoCo, and OpenAPI validation run through focused gates.
-- `fastCheck` runs local formatting, static analysis, unit tests, and coverage.
-- `qualityGate` adds contract tests, integration tests, OpenAPI validation, and
-  build-logic checks.
+- `fastCheck` runs the local formatting, static analysis, unit tests, and
+  coverage bundle through `unitCheck`.
+- `qualityGate` adds integration, contract, and E2E suites, OpenAPI validation,
+  and build-logic checks.
 - `bootJar` creates the executable Spring Boot artifact.
 - `image` delegates OCI creation to Spring Boot Paketo integration.
 - `imageSmoke` verifies startup and the non-root runtime contract.

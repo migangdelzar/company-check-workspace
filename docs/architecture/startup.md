@@ -23,7 +23,7 @@ backend.
    running. With the mise-managed Colima runtime:
 
    ```sh
-   colima start emme
+   colima start --cpu 4 --memory 4
    ```
 
 ## Build the local images
@@ -55,6 +55,10 @@ backend.
    approved digest references instead of creating the local properties file.
 
 ## Start and verify single-node mode
+
+After the local images are available, `mise run start` performs the same
+single-node startup and starts Colima automatically when Docker is unavailable
+and Colima is installed. The direct commands below expose each step.
 
 1. Render the merged Compose configuration:
 

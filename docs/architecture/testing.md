@@ -15,16 +15,22 @@ flowchart LR
 
 ## Service checks
 
-- `./company-check-service/gradlew -p company-check-service fastCheck` runs fast local checks.
-- `./company-check-service/gradlew -p company-check-service qualityGate` adds integration tests and OpenAPI validation.
+- `./company-check-service/gradlew -p company-check-service fastCheck` runs the
+  service's local unit/quality bundle: formatting, static analysis, unit tests,
+  and JaCoCo coverage.
+- `./company-check-service/gradlew -p company-check-service qualityGate` adds
+  integration, contract, and E2E test suites, OpenAPI validation, and the
+  included Gradle build-logic check.
 - Integration tests use PostgreSQL and Redis Testcontainers.
-- Contract tests validate the generated HTTP surface against
-  `openapi/backend-api.yaml`; e2e/Compose checks validate the assembled runtime
-  images and profile overlays.
+- Contract tests exercise the HTTP boundary against the service contract, while
+  `openApiValidate` lints `openapi/backend-api.yaml` and the nested service
+  copy. Compose E2E checks validate the assembled runtime images and profile
+  overlays.
 - JaCoCo reports cover service/model and workflow logic while repository
   integration behavior is exercised separately against real PostgreSQL/Redis
   containers.
-- Layered architecture tests verify controller/service/repository/client
+- `LayeredDependencyTest`, `LayerPackageStructureTest`, and
+  `ServiceModelArchitectureTest` verify controller/service/repository/client
   dependency direction and prevent provider DTOs, repository entities, or
   transport types from leaking across boundaries.
 - Build artifacts are checked through `bootJar`, Paketo image validation, image
