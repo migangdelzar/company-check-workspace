@@ -4,6 +4,29 @@ on:
   pull_request:
   push:
   workflow_dispatch:
+    inputs:
+      run-validation:
+        description: Run the complete JVM/native validation workflow
+        required: true
+        default: false
+        type: boolean
+      image-variant:
+        description: Image variant to validate when run-validation is enabled
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - jvm
+          - native
+      paketo-builder-image:
+        description: Immutable Paketo builder image reference
+        required: false
+        type: string
+      paketo-run-image:
+        description: Immutable Paketo run image reference
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -78,3 +101,11 @@ jobs:
       provider-image: ${{ vars.COMPANY_CHECK_PROVIDER_IMAGE }}
       postgres-image: ${{ vars.POSTGRES_IMAGE }}
       redis-image: ${{ vars.REDIS_IMAGE }}
+
+  validation:
+    if: github.event_name == 'workflow_dispatch' && inputs.run-validation == true
+    uses: ./.github/workflows/validation.yml
+    with:
+      paketo-builder-image: ${{ inputs.paketo-builder-image }}
+      paketo-run-image: ${{ inputs.paketo-run-image }}
+      image-variant: ${{ inputs.image-variant }}
