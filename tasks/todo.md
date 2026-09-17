@@ -173,20 +173,82 @@ in the stress flow, and prove the complete validation pipeline green.
     - Run `35260018233` → all green: workspace-gates (rerun after flaky Gradle cache `ENETUNREACH`),
       service gate, image build, **e2e (42s)**, **stress (2m28s)**, provider quality
 
+## 2026-09-17 — Mise onboarding improvement
+
+### Subtitle: Make mise the single entry point, add install/doctor/observability aliases, and add GETTING_STARTED.
+
+### Task: Expand mise tasks to cover every local workflow
+
+- [x] Add bootstrap/validate aliases and fix colima profile handling
+  - **Actions Applied**
+    - `mise.toml` — added `install`, `env`, `doctor`, `health`, `smoke`, `ps`,
+      `start-observability`, `clean`; rewired `start`/`start-distributed`/
+      `compose-check`/`service-full`; colima profile honor via `COLIMA_PROFILE`
+      (default `emme`); `service-full` exports Docker host + socket override
+      automatically on `colima-*` contexts
+  - **Verification**
+    - `mise tasks` lists 18 tasks; `mise run install` exits 0 (submodules
+      registered); colima env-detection snippet sets
+      `DOCKER_HOST=unix://…/.colima/emme/docker.sock` + socket override
+
+- [x] Expose useful mise CLI commands as project tasks
+  - **Actions Applied**
+    - `mise.toml` — added `trust`, `tools` (`mise ls`), `current`, `outdated`
+  - **Verification**
+    - `mise run trust` → "No untrusted config files found"; `mise run tools`/
+      `current` list pinned versions; `mise run outdated` → "all up to date";
+      `mise tasks` lists all 22 tasks
+
+- [x] Add shared docker helper and doctor script
+  - **Actions Applied**
+    - `scripts/mise-docker.sh` (new) — `profile|ensure|status` subcommands;
+      `scripts/mise-doctor.sh` (new) — tool/submodule/env/docker/memory check
+  - **Verification**
+    - `bash -n` passes both; `scripts/mise-doctor.sh` → "all checks passed" exit 0
+
+- [x] Harden the setup runner
+  - **Actions Applied**
+    - `scripts/mise-setup.sh` — colima now started with `-p <profile>`;
+      submodule `gradlew`/`Dockerfile` presence checked before build; dropped
+      invalid `mise install --include-lazy` hint
+  - **Verification**
+    - `bash -n scripts/mise-setup.sh` passes; jvm/native paths unchanged
+
+### Task: Document prerequisites and onboarding
+
+- [x] Add GETTING_STARTED.md as the entry point
+  - **Actions Applied**
+    - `GETTING_STARTED.md` (new) — mise install (brew + curl), shell hook,
+      clone/submodule prep, `mise run install`, JVM/native setup, memory table,
+      daily command table
+  - **Verification**
+    - Markdown link check passes across README/docs/GETTING_STARTED
+
+- [x] Refresh README stale references and aliases
+  - **Actions Applied**
+    - `README.md` — Requirements/Complete-local-setup point to GETTING_STARTED;
+      removed dead Paketo placeholder `cp gradle.properties` step; expanded
+      "Workspace task aliases" list with all 18 tasks
+  - **Verification**
+    - `git diff --check` clean; link check passes
+
+- [x] Sync architecture docs
+  - **Actions Applied**
+    - `docs/architecture/startup.md` — tossed stale gradle.properties/Paketo
+      placeholder step; documented `mise run install` + colima profile default
+    - `docs/architecture/testing.md` — added `doctor`, observability in
+      `compose-check`, noted auto socket override for `service-full`
+  - **Verification**
+    - `mise run compose-check` renders all three overlays exit 0
+
 ## Summary — Current Status
 
-- Provider security gate fixed (was failing every run), bun version reproducible.
-- Stress flow fixed: locust artifacts writable, request budget correct on bounded runs.
-- Full dispatch validation green end-to-end (images → e2e → stress).
-- Push/PR automation (`ci.yml`, `security.yml`) confirmed green on the new commits.
-- Paketo/gradle simplification committed: `bootBuildImage` auto-resolves the
-  builder; `image` alias, paketo digest pins, and `nativeOptimization` removed;
-  `imagePlatform` honored only when explicitly requested.
+- mise is now the single local entry point: `mise run install` → `setup-jvm`/
+  `setup-native`, plus doctor, health, smoke, observability, cleanup aliases.
+- Colima profile is honored everywhere (`emme` default, `COLIMA_PROFILE` override).
+- Local `mise.toml` validates lazily; nothing external is started by the changes.
 
 ## Next Up
 
-- Optional: clean up dead repo vars `PAKETO_BUILDER_IMAGE`/`PAKETO_RUN_IMAGE`
-  (now auto-resolved) before they are reused.
-- Optional: set repo vars (`COMPANY_CHECK_SERVICE_IMAGE`, `COMPANY_CHECK_PROVIDER_IMAGE`,
-  `POSTGRES_IMAGE`, `REDIS_IMAGE`,
-  `DEPENDENCY_GRAPH_ENABLED`) to enable `e2e`/`container`/`dependency-review` on push/PR.
+- Commit the mise/doc changes on the workspace branch once approved.
+- Optional: run `mise run setup-jvm` end-to-end under the new runner.

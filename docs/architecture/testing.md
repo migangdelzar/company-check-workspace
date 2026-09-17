@@ -15,14 +15,16 @@ flowchart LR
 
 ## Service checks
 
+- `mise run doctor` verifies tools, submodules, the Docker daemon, and memory
+  before any gate.
 - `mise run validate` invokes the service's `fastCheck` gate with the correct
   Gradle project path.
 - `mise run service-full` invokes the complete `qualityGate`; it still needs
   PostgreSQL and Redis Testcontainers.
 - `mise run provider` installs the locked Bun dependencies before running the
   provider quality checks.
-- `mise run compose-check` renders both single-node and distributed Compose
-  overlays without starting containers.
+- `mise run compose-check` renders the single-node, distributed, and
+  observability Compose overlays without starting containers.
 - `./company-check-service/gradlew -p company-check-service fastCheck` runs the
   service's local unit/quality bundle: formatting, static analysis, unit tests,
   and JaCoCo coverage.
@@ -43,8 +45,9 @@ flowchart LR
   transport types from leaking across boundaries.
 - Build artifacts are checked through `bootJar`, Paketo image validation, image
   smoke checks, dependency locks, and dependency verification metadata.
-- On Colima or another VM-backed Docker context, set the Docker host and socket
-  override described in the workspace README.
+- On Colima or another VM-backed Docker context, `mise run service-full` exports
+  the Docker host and socket override automatically. For manual `gradlew` runs,
+  set the override described in the workspace README.
 - Use `docker compose` where the Compose v2 plugin is installed; the equivalent
   `docker-compose` command is supported by the performance runner.
 

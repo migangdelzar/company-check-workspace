@@ -23,12 +23,15 @@ if [[ "$variant" == "native" ]]; then
 fi
 
 require_command() {
-  command -v "$1" >/dev/null 2>&1 || die "required command '$1' is not on PATH; run 'mise install --include-lazy' first"
+  command -v "$1" >/dev/null 2>&1 || die "required command '$1' is not on PATH; run 'mise run install'"
 }
 
 for command_name in bun docker docker-compose curl; do
   require_command "$command_name"
 done
+
+[[ -f "$repo_root/company-check-service/gradlew" ]] || die "company-check-service submodule is not initialized; run 'mise run install'"
+[[ -f "$repo_root/company-check-provider/Dockerfile" ]] || die "company-check-provider submodule is not initialized; run 'mise run install'"
 
 if [[ ! -f "$repo_root/.env" ]]; then
   [[ -f "$repo_root/.env.example" ]] || die "missing .env.example"
@@ -38,8 +41,9 @@ fi
 
 if ! docker info >/dev/null 2>&1; then
   if command -v colima >/dev/null 2>&1; then
-    echo "Docker is unavailable; starting Colima with ${memory_gib} GiB for the $variant setup"
-    colima start --cpu 4 --memory "$memory_gib"
+    profile="$("$repo_root/scripts/mise-docker.sh" profile)"
+    echo "Docker is unavailable; starting Colima profile '$profile' with ${memory_gib} GiB for the $variant setup"
+    colima start -p "$profile" --cpu 4 --memory "$memory_gib"
   fi
 fi
 

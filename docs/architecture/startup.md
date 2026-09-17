@@ -7,37 +7,32 @@ Spring Boot backend.
 
 ## Prerequisites
 
-1. Initialize the provider submodule:
-
-   ```sh
-   git submodule update --init --recursive
-   ```
-
-2. Install Java 25, Docker, Compose, Bun, and the optional Colima runtime with
-   `mise`:
+1. Install `mise` and initialize the workspace submodules:
 
    ```sh
    mise trust
-   mise install --include-lazy
+   mise run install
    ```
+
+   `mise run install` initializes the submodules, installs every pinned tool
+   (Java 25, Docker, Compose, Bun, and the optional Colima runtime), and creates
+   `.env` from `.env.example` only when `.env` is absent.
 
 ## Complete setup with mise
 
-Create the local Gradle properties file once, replace both Paketo placeholders
-with approved immutable references, then choose exactly one image path:
+Choose exactly one image path:
 
 ```sh
-cp company-check-service/gradle.properties.example company-check-service/gradle.properties
 mise run setup-jvm
 # or: mise run setup-native
 ```
 
-The setup task creates `.env` only when it is absent, runs the locked provider
-checks, builds `company-check-provider:local` and
-`company-check-service:local`, starts the single-node overlay, and waits for
-`/actuator/health`. It uses an existing Docker daemon first and starts Colima
-only when Docker is unavailable; it does not overwrite `.env`, Docker Desktop,
-or an existing Colima configuration.
+The setup task uses an existing Docker daemon first and starts Colima (profile
+`emme` by default, override with `COLIMA_PROFILE`) only when Docker is
+unavailable; it does not overwrite `.env`, Docker Desktop, or an existing Colima
+configuration. It runs the locked provider checks, builds
+`company-check-provider:local` and `company-check-service:local`, starts the
+single-node overlay, and waits for `/actuator/health`.
 
 Image-build memory guidance:
 

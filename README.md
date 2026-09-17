@@ -31,37 +31,37 @@ provider remains a separate deployable simulator.
 
 ## Requirements
 
-- Docker Engine and Compose, or `mise` to install the pinned CLI, Compose, and
-  Colima versions.
-- Java 25 and Bun for service/provider development checks.
-- `mise` is the recommended onboarding and task interface.
+- `mise` — the recommended onboarding and task interface. It installs every
+  pinned tool (Java 25, Bun, Docker CLI, Compose, and Colima) for you. See
+  [Getting Started](GETTING_STARTED.md) for the mise installation steps.
+- Docker Engine and Compose (optional) — if you already run Docker Desktop or a
+  Colima VM, the setup uses your daemon when it has enough memory.
 - Git submodules initialized recursively.
-
-Initialize the workspace with:
-
-```sh
-git submodule update --init --recursive
-```
 
 ## Complete local setup
 
-Use one command for the JVM image path or one command for the native image
-path. Both commands install/verify the provider, build both local images with
-the existing Gradle/Paketo contract, start the single-node stack, and wait for
-the backend health endpoint:
+See [Getting Started](GETTING_STARTED.md) for the full entry path from a fresh
+machine. Once `mise` is installed, initialize the workspace with one command:
 
 ```sh
-mise trust
-mise install --include-lazy
-cp company-check-service/gradle.properties.example company-check-service/gradle.properties
-# Replace both Paketo placeholders with approved @sha256:<64-hex> references.
+mise run install
+```
+
+It initializes the submodules, installs every pinned tool (including Colima),
+and creates `.env` from `.env.example` only when `.env` is absent. Then use one
+command for the JVM image path or one command for the native image path. Both
+build the provider and service images through the existing Gradle/Paketo
+contract, start the single-node stack, and wait for the backend health endpoint:
+
+```sh
 mise run setup-jvm
 # Or: mise run setup-native
 ```
 
-The setup runner creates `.env` from `.env.example` only when `.env` is absent;
-it never overwrites an existing environment or Docker configuration. It uses
-an existing Docker daemon, or starts Colima only when Docker is unavailable.
+The setup runner never overwrites an existing environment or Docker
+configuration. It uses an existing Docker daemon, or starts Colima (profile
+`emme` by default, override with `COLIMA_PROFILE`) only when Docker is
+unavailable.
 
 Image builds need more memory than the running core stack. Use these Docker
 allocations before starting the setup command:
@@ -331,26 +331,38 @@ PERFORMANCE_TOPOLOGY=distributed \
 
 ## Workspace task aliases
 
-With `mise` installed:
+With `mise` installed, all workspace workflows are `mise run <task>` aliases:
 
 ```sh
-mise run setup-jvm
+mise run install              # submodules + pinned tools + .env once
+mise run trust                # trust the local mise configuration
+mise run doctor               # verify tools, Docker, submodules, memory
+mise run tools                # list installed tool versions
+mise run current              # show active tool versions
+mise run outdated             # check pinned tools for newer versions
+mise run setup-jvm            # build JVM images + start single-node
 # or: mise run setup-native
-mise run validate
-mise run service-full
-mise run provider
-mise run compose-check
-mise run start
-mise run start-distributed
-mise run performance
-mise run logs
-mise run stop
+mise run start                # start an already-built single-node stack
+mise run start-distributed    # start the distributed two-replica stack
+mise run start-observability  # add Prometheus, Grafana, Tempo, Loki, Alloy
+mise run health               # backend /actuator/health
+mise run smoke                # one verification through the API
+mise run validate             # fast service gate
+mise run service-full         # complete service gate (Testcontainers)
+mise run provider             # provider quality checks
+mise run compose-check        # validate all Compose overlays
+mise run ps                   # stack status
+mise run logs                 # follow single-node logs
+mise run performance          # bounded Locust workload
+mise run stop                 # stop single-node and distributed stacks
+mise run clean                # + remove Compose volumes and local images
 ```
 
 `mise run setup-jvm` and `mise run setup-native` are complete setup flows.
 `mise run start` only starts an already-built single-node stack, while
-`mise run compose-check` validates both Compose overlays. `.env.example`
-contains safe local defaults for new checkouts.
+`mise run compose-check` validates the single-node, distributed, and
+observability overlays. `.env.example` contains safe local defaults for new
+checkouts.
 
 ## Troubleshooting
 

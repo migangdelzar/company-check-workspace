@@ -23,8 +23,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     outputs:
-      service-image: ${{ steps.refs.outputs.service-image }}
-      provider-image: ${{ steps.refs.outputs.provider-image }}
+      service-image: ${{ steps.digests.outputs.service-image }}
+      provider-image: ${{ steps.digests.outputs.provider-image }}
     steps:
       - name: Checkout workspace with submodules
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
