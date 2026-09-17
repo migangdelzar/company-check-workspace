@@ -1,2 +1,2 @@
-.superpowers/sdd/*
-!.superpowers/sdd/.gitkeep
+.env
+.performance-artifacts/

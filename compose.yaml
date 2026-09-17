@@ -1,14 +1,19 @@
 name: ${COMPOSE_PROJECT_NAME:-company-check}
 services:
   backend:
-    image: ${COMPANY_CHECK_SERVICE_IMAGE:?set COMPANY_CHECK_SERVICE_IMAGE}
+    image: ${COMPANY_CHECK_SERVICE_IMAGE:-company-check-service:local}
     ports: ["${COMPANY_CHECK_SERVICE_PORT:-8080}:8080"]
     environment:
       SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/${COMPANY_CHECK_DB_NAME:-company_check}"
       SPRING_DATASOURCE_USERNAME: "${COMPANY_CHECK_DB_USER:-company_check}"
-      SPRING_DATASOURCE_PASSWORD: "${COMPANY_CHECK_DB_PASSWORD:?set a local database password}"
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: "6379"
+      SPRING_DATASOURCE_PASSWORD: "${COMPANY_CHECK_DB_PASSWORD:-change-me-locally}"
+      SPRING_PROFILES_ACTIVE: "${SPRING_PROFILES_ACTIVE:-single-node}"
+      JAVA_TOOL_OPTIONS: "${JAVA_TOOL_OPTIONS:-}"
+      OTEL_SERVICE_NAME: "${OTEL_SERVICE_NAME:-company-check-service}"
+      OTEL_METRICS_EXPORTER: "${OTEL_METRICS_EXPORTER:-none}"
+      OTEL_TRACES_EXPORTER: "${OTEL_TRACES_EXPORTER:-none}"
+      OTEL_LOGS_EXPORTER: "${OTEL_LOGS_EXPORTER:-none}"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-}"
       VERIFICATION_FREE_BASE_URL: http://free-provider:3000
       VERIFICATION_FREE_PATH: "/free-third-party?query={query}"
       VERIFICATION_PREMIUM_BASE_URL: http://premium-provider:3000
@@ -16,11 +21,18 @@ services:
     networks: [internal]
     depends_on:
       postgres: { condition: service_healthy }
-      redis: { condition: service_healthy }
       free-provider: { condition: service_healthy }
       premium-provider: { condition: service_healthy }
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/actuator/health >/dev/null"]
+      test:
+        - CMD
+        - bash
+        - -c
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/8080 &&
+          printf 'GET /actuator/health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          IFS= read -r status <&3 &&
+          [[ "$$status" == *" 200 "* ]]
       interval: 5s
       timeout: 3s
       retries: 12
@@ -32,9 +44,9 @@ services:
       - "${COMPANY_CHECK_DEBUG_PORT:-8081}:8080"
       - "${COMPANY_CHECK_JDWP_PORT:-5005}:5005"
     environment:
-      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:${COMPANY_CHECK_JDWP_TARGET_PORT:-5005}"
+      JAVA_TOOL_OPTIONS: "${JAVA_TOOL_OPTIONS:-} -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:${COMPANY_CHECK_JDWP_TARGET_PORT:-5005}"
   free-provider:
-    image: ${COMPANY_CHECK_PROVIDER_IMAGE:?set COMPANY_CHECK_PROVIDER_IMAGE}
+    image: ${COMPANY_CHECK_PROVIDER_IMAGE:-company-check-provider:local}
     environment:
       PROVIDER_TIER: free
       PROVIDER_SCENARIO_FILE: /app/config/scenarios/free.json
@@ -46,7 +58,7 @@ services:
       timeout: 3s
       retries: 12
   premium-provider:
-    image: ${COMPANY_CHECK_PROVIDER_IMAGE:?set COMPANY_CHECK_PROVIDER_IMAGE}
+    image: ${COMPANY_CHECK_PROVIDER_IMAGE:-company-check-provider:local}
     environment:
       PROVIDER_TIER: premium
       PROVIDER_SCENARIO_FILE: /app/config/scenarios/premium.json
@@ -58,27 +70,19 @@ services:
       timeout: 3s
       retries: 12
   postgres:
-    image: ${POSTGRES_IMAGE:?set POSTGRES_IMAGE}
+    image: ${POSTGRES_IMAGE:-postgres:17-alpine}
     environment:
       POSTGRES_DB: ${COMPANY_CHECK_DB_NAME:-company_check}
       POSTGRES_USER: ${COMPANY_CHECK_DB_USER:-company_check}
-      POSTGRES_PASSWORD: ${COMPANY_CHECK_DB_PASSWORD:?set a local database password}
+      POSTGRES_PASSWORD: ${COMPANY_CHECK_DB_PASSWORD:-change-me-locally}
     networks: [internal]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 3s
       retries: 12
-  redis:
-    image: ${REDIS_IMAGE:?set REDIS_IMAGE}
-    networks: [internal]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 12
   locust:
-    image: ${LOCUST_IMAGE:?set LOCUST_IMAGE}
+    image: ${LOCUST_IMAGE:-locustio/locust:2.32.10}
     profiles: [performance]
     command: ["-f", "/mnt/performance/locustfile.py", "--host", "http://backend:8080"]
     volumes:

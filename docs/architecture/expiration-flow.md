@@ -1,0 +1,22 @@
+# Expiration and Coordination Flow
+
+Each instance schedules the reaper, but only one instance owns a batch at a
+time in distributed mode. The lease has a TTL, and the SQL query orders by
+`expires_at`, locks rows with `SKIP LOCKED`, and updates at most 100 records per
+batch.
+
+```mermaid
+flowchart TD
+  Ready[Application ready] --> Reaper[Scheduled reaper]
+  Reaper --> Lock{Acquire expiration lease}
+  Lock -- no --> Stop[Return; another instance owns it]
+  Lock -- yes --> Batch[Expire up to 100\nIN_PROGRESS and expires_at <= now]
+  Batch --> Count{Expired == 100?}
+  Count -- yes --> Batch
+  Count -- no --> Release[Release lease]
+  Release --> Stop
+```
+
+The local profile uses an in-process lock. The distributed profile uses Redis
+with a random token, compare-and-delete release, and a bounded TTL. PostgreSQL
+remains the final authority, so a lost Redis lease cannot corrupt state.

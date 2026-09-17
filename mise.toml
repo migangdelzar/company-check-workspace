@@ -20,9 +20,13 @@ description = "Run provider formatting, type, lint and test checks"
 run = "cd company-check-provider && bun run quality"
 
 [tasks.compose-up]
-description = "Start the core Compose stack"
-run = "docker compose up -d"
+description = "Start the single-node Compose stack"
+run = "docker compose -f compose.yaml -f compose.single.yaml up -d --scale backend=1"
+
+[tasks.compose-distributed]
+description = "Start the distributed Compose stack with shared Redis"
+run = "docker compose -f compose.yaml -f compose.distributed.yaml up -d --scale backend=2"
 
 [tasks.compose-down]
 description = "Stop the Compose stack"
-run = "docker compose down"
+run = "docker compose -f compose.yaml -f compose.distributed.yaml down --remove-orphans"
