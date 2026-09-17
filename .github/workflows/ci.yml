@@ -17,6 +17,11 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: ./.github/actions/checkout-workspace
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
       - name: Check workspace contract and topology gates
         working-directory: company-check-service
         run: ./gradlew fastCheck

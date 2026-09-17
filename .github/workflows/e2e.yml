@@ -33,3 +33,12 @@ jobs:
           provider-image: ${{ inputs.provider-image }}
           postgres-image: ${{ inputs.postgres-image }}
           redis-image: ${{ inputs.redis-image }}
+
+  performance:
+    needs: e2e
+    uses: ./.github/workflows/performance.yml
+    with:
+      service-image: ${{ inputs.service-image }}
+      provider-image: ${{ inputs.provider-image }}
+      postgres-image: ${{ inputs.postgres-image }}
+      redis-image: ${{ inputs.redis-image }}

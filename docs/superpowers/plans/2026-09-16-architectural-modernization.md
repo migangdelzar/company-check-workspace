@@ -4,7 +4,7 @@
 
 **Goal:** Verify and harden the existing Company Check modernization while preserving API, provider, persistence, and deployment contracts.
 
-**Architecture:** Keep `configuration` as the Spring composition root, `application` dependent only on ports and domain, adapters dependent on application ports, and the domain framework-free. PostgreSQL remains authoritative; Redis/Caffeine provide coordination, leasing, rate limiting, and caching only.
+**Architecture:** Keep `configuration` as the Spring composition root, organized by operational context (`application`, `persistence`, `coordination`, `provider`, `web`, and `observability`). Keep `application` dependent only on ports and domain, allow adapters to receive immutable configuration property records, and keep the domain framework-free. PostgreSQL remains authoritative; Redis/Caffeine provide coordination, leasing, rate limiting, and caching only.
 
 **Tech Stack:** Java 25, Spring Boot 4.1, Spring Modulith, Gradle Kotlin DSL, JdbcClient/JDBC, PostgreSQL, Redis, Apache HttpClient 5, Resilience4j, Caffeine, Testcontainers, ArchUnit, Bun/Fastify provider, Docker Compose, Mermaid.
 
@@ -94,7 +94,7 @@ JUnit test names/conventions:
 | Test | Required assertion |
 |---|---|
 | `domainDoesNotDependOnSpringOrInfrastructure` | No class in `..verification.domain..` depends on `org.springframework..`, `org.apache.hc..`, `org.springframework.data.redis..`, `javax.sql..`, or `java.sql..`. |
-| `adaptersDependOnApplicationPortsInsteadOfConfiguration` | No class in `..verification.adapter..` depends on `..verification.configuration..`. |
+| `applicationDoesNotDependOnConfiguration` | No class in `..verification.application..` depends on `..verification.configuration..`; adapters may receive immutable configuration properties at the composition boundary. |
 | `configurationOwnsConcreteAdapterWiring` | Concrete provider, persistence, coordination, and rate-limit implementations are reachable from configuration tests, not application services. |
 
 Adapt the snippets to the project’s existing ArchUnit style and avoid

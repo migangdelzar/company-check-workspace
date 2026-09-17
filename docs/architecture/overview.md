@@ -26,6 +26,14 @@ adapters are the HTTP controller and expiration scheduler. Output adapters own
 JDBC persistence, Redis coordination/rate limiting, provider HTTP clients, and
 local in-memory alternatives.
 
+Spring wiring and externalized settings live under the top-level
+`configuration` package. Its subpackages provide context without mixing
+concerns: `application`, `persistence`, `coordination`, `provider`, `web`, and
+`observability`. `@ConfigurationProperties` records live beside the
+configuration that consumes them; adapters may receive those immutable records
+through the composition root, while application services receive ports and
+plain application values.
+
 PostgreSQL is authoritative for verification identity, status, claims, expiry,
 and terminal results. Redis is optional in single-node mode and shared in the
 distributed profile. The provider service is a deterministic simulator used by

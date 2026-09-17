@@ -36,7 +36,32 @@ runs:
           case "$status" in
             *" exited "*|*" dead "*) printf '%s\n' "$status" >&2; exit 1 ;;
           esac
-          [[ "$status" == *"backend running healthy"* ]] && exit 0
+          if curl --fail --silent http://localhost:8080/actuator/health >/dev/null; then
+            break
+          fi
         done
-        docker compose ps --all
-        exit 1
+        if (( SECONDS >= deadline )); then
+          docker compose ps --all
+          curl --fail --show-error http://localhost:8080/actuator/health || true
+          exit 1
+        fi
+
+        verification_id="$(uuidgen)"
+        start_response="$(curl --fail --silent --show-error --get \
+          --data-urlencode "verificationId=${verification_id}" \
+          --data-urlencode "query=CJQUNXGW" \
+          http://localhost:8080/backend-service)"
+        printf '%s' "$start_response" | jq -e --arg id "$verification_id" '
+          .verificationId == $id and
+          .status == "COMPLETED" and
+          .provider == "FREE" and
+          .company.cin == "CJQUNXGW"
+        ' >/dev/null
+
+        verification_response="$(curl --fail --silent --show-error \
+          "http://localhost:8080/verifications/${verification_id}")"
+        printf '%s' "$verification_response" | jq -e --arg id "$verification_id" '
+          .verificationId == $id and
+          .status == "COMPLETED" and
+          .company.cin == "CJQUNXGW"
+        ' >/dev/null

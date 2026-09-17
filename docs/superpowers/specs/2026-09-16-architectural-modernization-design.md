@@ -54,9 +54,12 @@ domain      -> Java standard library only
 
 The top-level `com.incode.verification.configuration` package is the Spring
 composition root. It owns bean wiring, profile selection, properties, resource
-limits, and infrastructure policy composition. Configuration may import
-adapter implementations, but application and domain code must not import
-configuration or adapter implementations.
+limits, and infrastructure policy composition. Configuration and property
+binding types are grouped by context under `application`, `persistence`,
+`coordination`, `provider`, `web`, and `observability`. Configuration may
+import adapter implementations, and adapters may receive immutable property
+records from that composition root. Application and domain code must not
+import configuration or adapter implementations.
 
 The adapter layout is:
 

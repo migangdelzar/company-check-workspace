@@ -9,6 +9,11 @@ services:
       redis: { condition: service_healthy }
   redis:
     image: ${REDIS_IMAGE:-redis:7-alpine}
+    deploy:
+      resources:
+        limits:
+          cpus: "${REDIS_CPU_LIMIT:-0.25}"
+          memory: ${REDIS_MEMORY_LIMIT:-256M}
     networks: [internal]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]

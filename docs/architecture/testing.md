@@ -26,7 +26,8 @@ flowchart LR
 
 `company-check-service/performance/run.sh` starts the performance Compose stack,
 waits for the backend health check, runs the version-controlled Locust scenario,
-writes HTML/CSV artifacts, and tears the stack down on exit. The smoke scenario
-uses five users for 30 seconds by default. `PERFORMANCE_FAILURE_PERCENT` is a
-tracked comparison target; the current runner emits the Locust results and does
-not yet fail the process from that threshold automatically.
+writes HTML/CSV artifacts, enforces the configured aggregate failure-rate and
+p95 latency thresholds, and tears the stack down on exit. The smoke scenario
+uses five users for 30 seconds by default. The manual/reusable
+`.github/workflows/performance.yml` workflow runs a stricter 10-user, 60-second
+bounded stress profile and uploads the artifacts for review.

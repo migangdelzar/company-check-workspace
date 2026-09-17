@@ -1,0 +1,108 @@
+name: Performance stress test
+
+on:
+  workflow_dispatch:
+    inputs:
+      service-image:
+        description: Immutable service image reference
+        required: true
+        type: string
+      provider-image:
+        description: Immutable provider image reference
+        required: true
+        type: string
+      postgres-image:
+        description: Immutable PostgreSQL image reference
+        required: true
+        type: string
+      redis-image:
+        description: Immutable Redis image reference
+        required: true
+        type: string
+      topology:
+        description: Compose topology to exercise
+        required: true
+        default: single
+        type: choice
+        options:
+          - single
+          - distributed
+      users:
+        description: Locust concurrent users
+        required: true
+        default: "10"
+        type: string
+      spawn-rate:
+        description: Locust users spawned per second
+        required: true
+        default: "2"
+        type: string
+      duration:
+        description: Bounded Locust duration, for example 60s
+        required: true
+        default: 60s
+        type: string
+  workflow_call:
+    inputs:
+      service-image:
+        required: true
+        type: string
+      provider-image:
+        required: true
+        type: string
+      postgres-image:
+        required: true
+        type: string
+      redis-image:
+        required: true
+        type: string
+      topology:
+        required: false
+        default: single
+        type: string
+      users:
+        required: false
+        default: "10"
+        type: string
+      spawn-rate:
+        required: false
+        default: "2"
+        type: string
+      duration:
+        required: false
+        default: 60s
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workspace-performance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stress:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: ./.github/actions/checkout-workspace
+      - name: Run bounded Locust stress test
+        env:
+          COMPANY_CHECK_SERVICE_IMAGE: ${{ inputs.service-image }}
+          COMPANY_CHECK_PROVIDER_IMAGE: ${{ inputs.provider-image }}
+          POSTGRES_IMAGE: ${{ inputs.postgres-image }}
+          REDIS_IMAGE: ${{ inputs.redis-image }}
+          PERFORMANCE_TOPOLOGY: ${{ inputs.topology }}
+          PERFORMANCE_USERS: ${{ inputs.users }}
+          PERFORMANCE_SPAWN_RATE: ${{ inputs.spawn-rate }}
+          PERFORMANCE_DURATION: ${{ inputs.duration }}
+          PERFORMANCE_STRICT_HTTP: "true"
+          PERFORMANCE_ARTIFACTS_DIR: .performance-artifacts
+        run: ./company-check-service/performance/run.sh
+      - name: Upload stress-test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-${{ github.run_id }}
+          path: .performance-artifacts/
+          if-no-files-found: warn

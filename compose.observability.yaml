@@ -1,0 +1,122 @@
+services:
+  prometheus:
+    image: ${PROMETHEUS_IMAGE:-prom/prometheus:v3.8.0}
+    profiles: [observability]
+    deploy:
+      resources:
+        limits:
+          cpus: "${PROMETHEUS_CPU_LIMIT:-0.50}"
+          memory: ${PROMETHEUS_MEMORY_LIMIT:-512M}
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-24h}
+    ports: ["${PROMETHEUS_PORT:-9090}:9090"]
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks: [internal]
+    depends_on:
+      backend: { condition: service_started }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/-/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  grafana:
+    image: ${GRAFANA_IMAGE:-grafana/grafana:12.1.1}
+    profiles: [observability]
+    deploy:
+      resources:
+        limits:
+          cpus: "${GRAFANA_CPU_LIMIT:-0.50}"
+          memory: ${GRAFANA_MEMORY_LIMIT:-512M}
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports: ["${GRAFANA_PORT:-3000}:3000"]
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks: [internal]
+    depends_on:
+      prometheus: { condition: service_healthy }
+      tempo: { condition: service_started }
+      loki: { condition: service_started }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  tempo:
+    image: ${TEMPO_IMAGE:-grafana/tempo:2.8.2}
+    profiles: [observability]
+    deploy:
+      resources:
+        limits:
+          cpus: "${TEMPO_CPU_LIMIT:-0.50}"
+          memory: ${TEMPO_MEMORY_LIMIT:-512M}
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    ports: ["${TEMPO_PORT:-3200}:3200"]
+    volumes:
+      - ./observability/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    networks: [internal]
+
+  loki:
+    image: ${LOKI_IMAGE:-grafana/loki:3.7.0}
+    profiles: [observability]
+    deploy:
+      resources:
+        limits:
+          cpus: "${LOKI_CPU_LIMIT:-0.50}"
+          memory: ${LOKI_MEMORY_LIMIT:-512M}
+    command: ["-config.file=/etc/loki/loki-config.yaml"]
+    ports: ["${LOKI_PORT:-3100}:3100"]
+    volumes:
+      - ./observability/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - loki-data:/loki
+    networks: [internal]
+
+  alloy:
+    image: ${ALLOY_IMAGE:-grafana/alloy:v1.11.2}
+    profiles: [observability]
+    deploy:
+      resources:
+        limits:
+          cpus: "${ALLOY_CPU_LIMIT:-0.25}"
+          memory: ${ALLOY_MEMORY_LIMIT:-256M}
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - /etc/alloy/config.alloy
+    ports: ["${ALLOY_PORT:-12345}:12345"]
+    volumes:
+      - ./observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - alloy-data:/var/lib/alloy
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [internal]
+    depends_on:
+      loki: { condition: service_started }
+      tempo: { condition: service_started }
+
+  backend:
+    environment:
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: "true"
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://alloy:4317
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_TRANSPORT: grpc
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+      OTEL_SERVICE_NAME: company-check-service
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://alloy:4317
+      OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: grpc
+
+volumes:
+  alloy-data:
+  grafana-data:
+  loki-data:
+  prometheus-data:
+  tempo-data:

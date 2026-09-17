@@ -3,6 +3,11 @@ services:
   backend:
     image: ${COMPANY_CHECK_SERVICE_IMAGE:-company-check-service:local}
     ports: ["${COMPANY_CHECK_SERVICE_PORT:-8080}:8080"]
+    deploy:
+      resources:
+        limits:
+          cpus: "${BACKEND_CPU_LIMIT:-1.0}"
+          memory: ${BACKEND_MEMORY_LIMIT:-1536M}
     environment:
       SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/${COMPANY_CHECK_DB_NAME:-company_check}"
       SPRING_DATASOURCE_USERNAME: "${COMPANY_CHECK_DB_USER:-company_check}"
@@ -23,19 +28,6 @@ services:
       postgres: { condition: service_healthy }
       free-provider: { condition: service_healthy }
       premium-provider: { condition: service_healthy }
-    healthcheck:
-      test:
-        - CMD
-        - bash
-        - -c
-        - >-
-          exec 3<>/dev/tcp/127.0.0.1/8080 &&
-          printf 'GET /actuator/health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
-          IFS= read -r status <&3 &&
-          [[ "$$status" == *" 200 "* ]]
-      interval: 5s
-      timeout: 3s
-      retries: 12
   backend-debug:
     extends:
       service: backend
@@ -47,6 +39,11 @@ services:
       JAVA_TOOL_OPTIONS: "${JAVA_TOOL_OPTIONS:-} -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:${COMPANY_CHECK_JDWP_TARGET_PORT:-5005}"
   free-provider:
     image: ${COMPANY_CHECK_PROVIDER_IMAGE:-company-check-provider:local}
+    deploy:
+      resources:
+        limits:
+          cpus: "${PROVIDER_CPU_LIMIT:-0.25}"
+          memory: ${PROVIDER_MEMORY_LIMIT:-256M}
     environment:
       PROVIDER_TIER: free
       PROVIDER_SCENARIO_FILE: /app/config/scenarios/free.json
@@ -59,6 +56,11 @@ services:
       retries: 12
   premium-provider:
     image: ${COMPANY_CHECK_PROVIDER_IMAGE:-company-check-provider:local}
+    deploy:
+      resources:
+        limits:
+          cpus: "${PROVIDER_CPU_LIMIT:-0.25}"
+          memory: ${PROVIDER_MEMORY_LIMIT:-256M}
     environment:
       PROVIDER_TIER: premium
       PROVIDER_SCENARIO_FILE: /app/config/scenarios/premium.json
@@ -71,6 +73,11 @@ services:
       retries: 12
   postgres:
     image: ${POSTGRES_IMAGE:-postgres:17-alpine}
+    deploy:
+      resources:
+        limits:
+          cpus: "${POSTGRES_CPU_LIMIT:-0.50}"
+          memory: ${POSTGRES_MEMORY_LIMIT:-512M}
     environment:
       POSTGRES_DB: ${COMPANY_CHECK_DB_NAME:-company_check}
       POSTGRES_USER: ${COMPANY_CHECK_DB_USER:-company_check}
@@ -89,6 +96,6 @@ services:
       - ./company-check-service/performance:/mnt/performance:ro
       - ${PERFORMANCE_ARTIFACTS_DIR:-.performance-artifacts}:/mnt/artifacts
     networks: [internal]
-    depends_on: { backend: { condition: service_healthy } }
+    depends_on: { backend: { condition: service_started } }
 networks:
   internal: { internal: true }
