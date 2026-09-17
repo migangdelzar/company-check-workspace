@@ -19,10 +19,10 @@ services:
       OTEL_TRACES_EXPORTER: "${OTEL_TRACES_EXPORTER:-none}"
       OTEL_LOGS_EXPORTER: "${OTEL_LOGS_EXPORTER:-none}"
       OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-}"
-      VERIFICATION_FREE_BASE_URL: http://free-provider:3000
-      VERIFICATION_FREE_PATH: "/free-third-party?query={query}"
-      VERIFICATION_PREMIUM_BASE_URL: http://premium-provider:3000
-      VERIFICATION_PREMIUM_PATH: "/premium-third-party?query={query}"
+      VERIFICATION_PROVIDERS_FREE_BASE_URL: http://free-provider:3000
+      VERIFICATION_PROVIDERS_FREE_PATH: "/free-third-party?query={query}"
+      VERIFICATION_PROVIDERS_PREMIUM_BASE_URL: http://premium-provider:3000
+      VERIFICATION_PROVIDERS_PREMIUM_PATH: "/premium-third-party?query={query}"
     networks: [internal]
     depends_on:
       postgres: { condition: service_healthy }
