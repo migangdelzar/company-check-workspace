@@ -1,7 +1,7 @@
 [submodule "company-check-service"]
 	path = company-check-service
-	url = ./company-check-service
+	url = https://github.com/migangdelzar/company-check-service.git
 
 [submodule "company-check-provider"]
 	path = company-check-provider
-	url = ./company-check-provider
+	url = https://github.com/migangdelzar/company-check-provider.git
