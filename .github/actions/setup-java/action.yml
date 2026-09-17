@@ -31,5 +31,5 @@ runs:
             printf '%s' "${paths[@]}" | tr ' ' ',' | tr -d '\n'
           )" >>"$GITHUB_ENV"
         fi
-    - uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
+    - uses: gradle/actions/setup-gradle@67621b124fd2e251c5e8a0e6e3b91318f2287669 # v6.3.0 (Node 24 runtime)
       if: inputs.gradle-cache == 'true'
