@@ -1,6 +1,6 @@
 # ADR 0007: Gradle, Paketo, and Immutable Compose Inputs
 
-- Status: Accepted
+- Status: Partially superseded by [ADR 0009](0009-paketo-auto-resolution.md)
 - Date: 2026-09-16
 
 ## Context

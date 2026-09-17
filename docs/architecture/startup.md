@@ -57,13 +57,12 @@ When diagnosing a build, the equivalent lower-level commands are:
 ```sh
 (cd company-check-provider && bun install --frozen-lockfile && bun run quality)
 docker build -t company-check-provider:local company-check-provider
-./company-check-service/gradlew -p company-check-service image \
+./company-check-service/gradlew -p company-check-service bootBuildImage \
   -PimageName=company-check-service:local
 ```
 
-For a native image, add `-PimageVariant=native -PnativeOptimization=b`.
-Alternatively, pass the approved `-PpaketoBuilderImage` and
-`-PpaketoRunImage` values instead of storing them in the local properties file.
+For a native image, add `-PimageVariant=native`. The Spring Boot plugin
+auto-resolves the Paketo builder and its embedded run image.
 
 ## Start and verify single-node mode
 

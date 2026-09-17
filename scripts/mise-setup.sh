@@ -22,9 +22,6 @@ if [[ "$variant" == "native" ]]; then
   memory_gib=11
 fi
 
-default_paketo_builder_image='paketobuildpacks/builder-jammy-base@sha256:aadea5426b08ec201d62a74ac46b61c0452b9bd139806f071e4a81e362a43d83'
-default_paketo_run_image='paketobuildpacks/run-jammy-base@sha256:03a974a6e7b563878429117943f14139ff29f0f3d02aa7e3d3ab0ae862908168'
-
 require_command() {
   command -v "$1" >/dev/null 2>&1 || die "required command '$1' is not on PATH; run 'mise install --include-lazy' first"
 }
@@ -38,26 +35,6 @@ if [[ ! -f "$repo_root/.env" ]]; then
   cp "$repo_root/.env.example" "$repo_root/.env"
   echo "Created .env from .env.example"
 fi
-
-properties_file="$repo_root/company-check-service/gradle.properties"
-
-paketo_reference() {
-  local property_name="$1" environment_name="$2" default_image="$3" value
-  value="${!environment_name-}"
-  if [[ -z "$value" && -f "$properties_file" ]]; then
-    value="$(sed -n "s/^${property_name}=//p" "$properties_file" | head -n 1)"
-  fi
-  if [[ -z "$value" || "$value" == *'<64-hex-digest>'* ]]; then
-    value="$default_image"
-  fi
-  [[ "$value" =~ ^[^@[:space:]]+@sha256:[0-9A-Fa-f]{64}$ ]] || {
-    die "$environment_name must be an immutable image reference ending in @sha256:<64 hex digits>"
-  }
-  printf -v "$environment_name" '%s' "$value"
-}
-
-paketo_reference paketoBuilderImage PAKETO_BUILDER_IMAGE "$default_paketo_builder_image"
-paketo_reference paketoRunImage PAKETO_RUN_IMAGE "$default_paketo_run_image"
 
 if ! docker info >/dev/null 2>&1; then
   if command -v colima >/dev/null 2>&1; then
@@ -90,23 +67,17 @@ docker build -t company-check-provider:local "$repo_root/company-check-provider"
 
 gradle_args=(
   -p "$repo_root/company-check-service"
-  image
+  bootBuildImage
   "-PimageVariant=$variant"
   -PimageName=company-check-service:local
-  "-PpaketoBuilderImage=$PAKETO_BUILDER_IMAGE"
-  "-PpaketoRunImage=$PAKETO_RUN_IMAGE"
   --no-daemon
   --no-parallel
   --max-workers=1
   --console=plain
 )
-if [[ "$variant" == "native" ]]; then
-  gradle_args+=(-PnativeOptimization=b)
-fi
 "$repo_root/company-check-service/gradlew" "${gradle_args[@]}"
 
 cd "$repo_root"
-docker-compose -f compose.yaml -f compose.single.yaml config >/dev/null
 docker-compose -f compose.yaml -f compose.single.yaml up -d --scale backend=1
 
 health_url="http://localhost:8080/actuator/health"

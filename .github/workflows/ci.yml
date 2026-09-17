@@ -18,14 +18,6 @@ on:
         options:
           - jvm
           - native
-      paketo-builder-image:
-        description: Immutable Paketo builder image reference
-        required: false
-        type: string
-      paketo-run-image:
-        description: Immutable Paketo run image reference
-        required: false
-        type: string
       postgres-image:
         description: Immutable PostgreSQL image reference for E2E and Locust
         required: false
@@ -121,8 +113,6 @@ jobs:
       packages: write
     uses: ./.github/workflows/validation.yml
     with:
-      paketo-builder-image: ${{ inputs.paketo-builder-image }}
-      paketo-run-image: ${{ inputs.paketo-run-image }}
       image-variant: ${{ inputs.image-variant }}
       postgres-image: ${{ inputs.postgres-image }}
       redis-image: ${{ inputs.redis-image }}

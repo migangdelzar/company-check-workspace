@@ -179,13 +179,14 @@ in the stress flow, and prove the complete validation pipeline green.
 - Stress flow fixed: locust artifacts writable, request budget correct on bounded runs.
 - Full dispatch validation green end-to-end (images → e2e → stress).
 - Push/PR automation (`ci.yml`, `security.yml`) confirmed green on the new commits.
-- In-flight paketo/gradle simplification session still has uncommitted changes in
-  `company-check-service` (build-logic, workflows, ADR 0009) — intentionally untouched.
+- Paketo/gradle simplification committed: `bootBuildImage` auto-resolves the
+  builder; `image` alias, paketo digest pins, and `nativeOptimization` removed;
+  `imagePlatform` honored only when explicitly requested.
 
 ## Next Up
 
-- Finish the uncommitted paketo/gradle simplification session (auto-resolve Paketo via
-  `bootBuildImage`) and commit it separately.
+- Optional: clean up dead repo vars `PAKETO_BUILDER_IMAGE`/`PAKETO_RUN_IMAGE`
+  (now auto-resolved) before they are reused.
 - Optional: set repo vars (`COMPANY_CHECK_SERVICE_IMAGE`, `COMPANY_CHECK_PROVIDER_IMAGE`,
-  `POSTGRES_IMAGE`, `REDIS_IMAGE`, `PAKETO_BUILDER_IMAGE`, `PAKETO_RUN_IMAGE`,
+  `POSTGRES_IMAGE`, `REDIS_IMAGE`,
   `DEPENDENCY_GRAPH_ENABLED`) to enable `e2e`/`container`/`dependency-review` on push/PR.

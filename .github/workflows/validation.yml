@@ -3,14 +3,6 @@ name: Complete validation
 on:
   workflow_dispatch:
     inputs:
-      paketo-builder-image:
-        description: Immutable Paketo builder image reference
-        required: true
-        type: string
-      paketo-run-image:
-        description: Immutable Paketo run image reference
-        required: true
-        type: string
       image-variant:
         description: Image variant to validate
         required: true
@@ -21,12 +13,6 @@ on:
           - native
   workflow_call:
     inputs:
-      paketo-builder-image:
-        required: true
-        type: string
-      paketo-run-image:
-        required: true
-        type: string
       image-variant:
         required: false
         default: jvm
@@ -130,8 +116,6 @@ jobs:
     name: Build or reuse immutable ${{ inputs.image-variant }} validation images
     uses: ./.github/workflows/build-images.yml
     with:
-      paketo-builder-image: ${{ inputs.paketo-builder-image }}
-      paketo-run-image: ${{ inputs.paketo-run-image }}
       image-variant: ${{ inputs.image-variant }}
 
   e2e:

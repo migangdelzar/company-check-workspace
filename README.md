@@ -113,17 +113,15 @@ debugging image arguments or building without the complete onboarding flow:
 
 ```sh
 docker build -t company-check-provider:local company-check-provider
-./company-check-service/gradlew -p company-check-service image \
-  -PpaketoBuilderImage=<approved-builder@sha256:64-hex-digest> \
-  -PpaketoRunImage=<approved-run@sha256:64-hex-digest> \
+./company-check-service/gradlew -p company-check-service bootBuildImage \
   -PimageName=company-check-service:local
 ```
 
 The service keeps Temurin suitable for regular JVM builds and automatically
 provisions a native-image-capable GraalVM toolchain for local
 `nativeCompile`. For the Compose path, build the native OCI image through
-Paketo by adding `-PimageVariant=native -PnativeOptimization=b` to the command
-above. Paketo provisions its native toolchain inside the builder container.
+Paketo by adding `-PimageVariant=native` to the command above. Paketo
+provisions its native toolchain inside the builder container.
 
 Then copy the workspace environment template if it was not created already:
 
@@ -323,11 +321,8 @@ Artifacts are written to `.performance-artifacts/`.
 To exercise the native image across two Redis-coordinated backend replicas:
 
 ```sh
-./company-check-service/gradlew -p company-check-service image \
-  -PpaketoBuilderImage=<approved-builder@sha256:64-hex-digest> \
-  -PpaketoRunImage=<approved-run@sha256:64-hex-digest> \
+./company-check-service/gradlew -p company-check-service bootBuildImage \
   -PimageVariant=native \
-  -PnativeOptimization=b \
   -PimageName=company-check-service:native-local
 COMPANY_CHECK_SERVICE_IMAGE=company-check-service:native-local \
 PERFORMANCE_TOPOLOGY=distributed \

@@ -3,12 +3,6 @@ name: Build validation images
 on:
   workflow_call:
     inputs:
-      paketo-builder-image:
-        required: true
-        type: string
-      paketo-run-image:
-        required: true
-        type: string
       image-variant:
         required: true
         type: string
@@ -56,14 +50,10 @@ jobs:
           OWNER: ${{ github.repository_owner }}
           SHA: ${{ github.sha }}
           VARIANT: ${{ inputs.image-variant }}
-          PAKETO_BUILDER_IMAGE: ${{ inputs.paketo-builder-image }}
-          PAKETO_RUN_IMAGE: ${{ inputs.paketo-run-image }}
         working-directory: .
         run: |
           set -euo pipefail
           [[ "$VARIANT" == "jvm" || "$VARIANT" == "native" ]]
-          [[ "$PAKETO_BUILDER_IMAGE" =~ ^[^[:space:]@]+@sha256:[0-9a-fA-F]{64}$ ]]
-          [[ "$PAKETO_RUN_IMAGE" =~ ^[^[:space:]@]+@sha256:[0-9a-fA-F]{64}$ ]]
 
           service_ref="ghcr.io/${OWNER}/company-check-service:validation-${SHA}-${VARIANT}"
           provider_ref="ghcr.io/${OWNER}/company-check-provider:validation-${SHA}-${VARIANT}"
@@ -74,11 +64,8 @@ jobs:
           fi
 
           if ! docker buildx imagetools inspect "$service_ref" >/dev/null 2>&1; then
-            ./company-check-service/gradlew -p company-check-service image \
+            ./company-check-service/gradlew -p company-check-service bootBuildImage \
               -PimageVariant="$VARIANT" \
-              -PnativeOptimization=b \
-              -PpaketoBuilderImage="$PAKETO_BUILDER_IMAGE" \
-              -PpaketoRunImage="$PAKETO_RUN_IMAGE" \
               -PimagePlatform=linux/amd64 \
               -PimageName="$service_ref" \
               -PpublishImage=true \

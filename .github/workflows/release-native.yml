@@ -48,26 +48,11 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Require immutable Paketo inputs
-        shell: bash
-        env:
-          PAKETO_BUILDER_IMAGE: ${{ vars.PAKETO_BUILDER_IMAGE }}
-          PAKETO_RUN_IMAGE: ${{ vars.PAKETO_RUN_IMAGE }}
-        run: |
-          set -euo pipefail
-          [[ "$PAKETO_BUILDER_IMAGE" =~ ^[^[:space:]@]+@sha256:[0-9a-fA-F]{64}$ ]]
-          [[ "$PAKETO_RUN_IMAGE" =~ ^[^[:space:]@]+@sha256:[0-9a-fA-F]{64}$ ]]
       - name: Build and publish experimental Paketo native image through Gradle
         working-directory: company-check-service
-        env:
-          PAKETO_BUILDER_IMAGE: ${{ vars.PAKETO_BUILDER_IMAGE }}
-          PAKETO_RUN_IMAGE: ${{ vars.PAKETO_RUN_IMAGE }}
         run: >-
-          ./gradlew image
+          ./gradlew bootBuildImage
           -PimageVariant=native
-          -PnativeOptimization=b
-          -PpaketoBuilderImage="$PAKETO_BUILDER_IMAGE"
-          -PpaketoRunImage="$PAKETO_RUN_IMAGE"
           -PpublishImage=true
           -PimagePlatform=linux/amd64
           -PimageName=ghcr.io/${{ github.repository_owner }}/company-check-service:native-${{ github.sha }}-amd64

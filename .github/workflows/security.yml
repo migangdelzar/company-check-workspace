@@ -4,15 +4,6 @@ on:
   push:
   pull_request:
   workflow_dispatch:
-    inputs:
-      paketo-builder-image:
-        description: Immutable Paketo builder image reference for image scanning
-        required: true
-        type: string
-      paketo-run-image:
-        description: Immutable Paketo run image reference for image scanning
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -175,17 +166,13 @@ jobs:
 
   container:
     name: Build and scan JVM image
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (vars.PAKETO_BUILDER_IMAGE != '' && vars.PAKETO_RUN_IMAGE != '')
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
       contents: read
       security-events: write
     env:
-      PAKETO_BUILDER_IMAGE: ${{ inputs.paketo-builder-image || vars.PAKETO_BUILDER_IMAGE }}
-      PAKETO_RUN_IMAGE: ${{ inputs.paketo-run-image || vars.PAKETO_RUN_IMAGE }}
       SECURITY_IMAGE: company-check-security:${{ github.sha }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -197,19 +184,11 @@ jobs:
           distribution: temurin
           java-version: '25'
       - uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
-      - name: Require immutable Paketo inputs
-        shell: bash
-        run: |
-          set -euo pipefail
-          [[ "$PAKETO_BUILDER_IMAGE" =~ ^[^[:space:]@]+@sha256:[0-9a-fA-F]{64}$ ]]
-          [[ "$PAKETO_RUN_IMAGE" =~ ^[^[:space:]@]+@sha256:[0-9a-fA-F]{64}$ ]]
       - name: Build JVM image without publishing
         working-directory: company-check-service
         run: >-
-          ./gradlew image
+          ./gradlew bootBuildImage
           -PimageVariant=jvm
-          -PpaketoBuilderImage="$PAKETO_BUILDER_IMAGE"
-          -PpaketoRunImage="$PAKETO_RUN_IMAGE"
           -PimagePlatform=linux/amd64
           -PimageName="$SECURITY_IMAGE"
           -PpublishImage=false
