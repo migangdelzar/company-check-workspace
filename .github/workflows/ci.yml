@@ -159,6 +159,7 @@ jobs:
           name: ci-stage-plan
           path: .ci-artifacts/
           if-no-files-found: error
+          include-hidden-files: true
 
   quality-workspace:
     name: quality · workspace

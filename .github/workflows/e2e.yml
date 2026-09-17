@@ -65,3 +65,4 @@ jobs:
           name: e2e-server-logs
           path: .e2e-artifacts/
           if-no-files-found: error
+          include-hidden-files: true
