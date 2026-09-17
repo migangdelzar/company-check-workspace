@@ -25,9 +25,17 @@ runs:
         REDIS_IMAGE: ${{ inputs.redis-image }}
       run: |
         set -euo pipefail
-        docker compose up -d
-        cleanup() { docker compose down >/dev/null 2>&1 || true; }
+        cleanup() {
+          exit_code=$?
+          if (( exit_code != 0 )); then
+            docker compose ps --all >&2 || true
+            docker compose logs --no-color --tail=200 backend free-provider premium-provider postgres >&2 || true
+          fi
+          docker compose down >/dev/null 2>&1 || true
+          exit "$exit_code"
+        }
         trap cleanup EXIT
+        docker compose up -d
         timeout_seconds="${COMPOSE_WAIT_TIMEOUT_SECONDS:-120}"
         deadline=$((SECONDS + timeout_seconds))
         while (( SECONDS < deadline )); do
