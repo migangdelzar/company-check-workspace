@@ -199,6 +199,21 @@ in the stress flow, and prove the complete validation pipeline green.
       `current` list pinned versions; `mise run outdated` → "all up to date";
       `mise tasks` lists all 22 tasks
 
+- [x] Cover every test, deployment, and performance workflow
+  - **Actions Applied**
+    - `scripts/mise-gradle.sh` (new) — shared helper that exports
+      `DOCKER_HOST` + `TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE` on `colima-*`
+      contexts, then runs the service Gradle task
+    - `mise.toml` — added `integration`, `contract`, `e2e`, `openapi`,
+      `provider-security` (Trivy), `provider-licenses`, `verify`, `build-jvm`/
+      `build-native` (via `mise-setup.sh --build-only`), `image-smoke`
+      (`containerCheck`), `performance-distributed`
+    - `scripts/mise-setup.sh` — added `--build-only` mode (skips compose up/wait)
+  - **Verification**
+    - `bash -n` passes all scripts; `mise run openapi` and
+      `mise run contract` → BUILD SUCCESSFUL; `mise tasks` lists 34 tasks;
+      `scripts/mise-gradle.sh tasks --offline` lists service tasks
+
 - [x] Add shared docker helper and doctor script
   - **Actions Applied**
     - `scripts/mise-docker.sh` (new) — `profile|ensure|status` subcommands;
@@ -243,8 +258,11 @@ in the stress flow, and prove the complete validation pipeline green.
 
 ## Summary — Current Status
 
-- mise is now the single local entry point: `mise run install` → `setup-jvm`/
-  `setup-native`, plus doctor, health, smoke, observability, cleanup aliases.
+- mise is the single local entry point: 34 tasks covering bootstrap, every
+  service/provider test gate, image builds, Compose topologies, observability,
+  Locust performance (single + distributed), and cleanup.
+- Shared `scripts/mise-gradle.sh` applies the Colima Docker host/socket override
+  to every service Gradle task automatically.
 - Colima profile is honored everywhere (`emme` default, `COLIMA_PROFILE` override).
 - Local `mise.toml` validates lazily; nothing external is started by the changes.
 
@@ -252,3 +270,95 @@ in the stress flow, and prove the complete validation pipeline green.
 
 - Commit the mise/doc changes on the workspace branch once approved.
 - Optional: run `mise run setup-jvm` end-to-end under the new runner.
+## 2026-09-17 — Build-Logic Convention Plugin Improvements
+
+### Subtitle: Behavior-preserving cleanup of the 8 Gradle files + version catalog (7 design items approved).
+
+### Task: Catalog hygiene (design item 1)
+
+- [x] Add `plexus-utils` version+library to catalog; replace inline coordinates
+  - **Actions Applied**
+    - `company-check-service/gradle/libs.versions.toml` — added
+      `[versions] plexus-utils = "3.6.1"` and `plexus-utils` library entry
+    - `company-check-service/build.gradle.kts` — `checkstyle(libs.plexus.utils)`
+      replaces inline `org.codehaus.plexus:plexus-utils:3.6.1`
+  - **Verification**
+    - `buildLogicCheck` BUILD SUCCESSFUL; `fastCheck` BUILD SUCCESSFUL
+
+- [x] Drop redundant `spring-boot-starter-aspectj` version.ref
+  - **Actions Applied**
+    - `company-check-service/gradle/libs.versions.toml` — removed
+      `version.ref = "spring-boot"` (BOM-managed, confirmed in 4.1.1 pom)
+  - **Verification**
+    - `fastCheck` BUILD SUCCESSFUL (dependency locking resolved from BOM)
+
+### Task: DRY quality gate (design item 2)
+
+- [x] Extract `qualityAssuranceTasks` once, reuse in `unitCheck` + `check`
+  - **Actions Applied**
+    - `build-logic/src/main/kotlin/com.incode.quality-conventions.gradle.kts` —
+      single `listOf(...)` used by both `unitCheck` and `check` dependsOn
+  - **Verification**
+    - `CapabilityTaskFunctionalTest` (TestKit) passes unchanged
+
+### Task: De-magic test suites (design item 3)
+
+- [x] Replace `if (suiteName == "integrationTest")` with a per-suite map
+  - **Actions Applied**
+    - `build-logic/src/main/kotlin/com.incode.testing-conventions.gradle.kts` —
+      `testSuiteExtraImplementation` map drives the integration-only deps
+  - **Verification**
+    - `buildLogicCheck` passes; TestKit capability suite passes
+
+### Task: Idiomatic process execution + explicit compose dir (design item 4)
+
+- [x] Replace `ProcessBuilder` `docker()` with Gradle-native exec
+  - **Actions Applied**
+    - `build-logic/src/main/kotlin/com.incode.container-conventions.gradle.kts` —
+      `docker(project, ...)` now uses `project.providers.exec` + `ExecOutput`
+      (`standardOutput.asText`, `result.exitValue`); all calls remain inside
+      `imageSmoke.doLast` (config-cache safe)
+  - **Verification**
+    - `buildLogicCheck` passes (Gradle 9 removed `project.exec`; used
+      `providers.exec` per API
+
+- [x] Explicit workspace compose dir in `composeDigestCheck`
+  - **Actions Applied**
+    - Same file — `workspaceComposeDir = rootProject.layout.projectDirectory.dir("..")`
+      replaces inline `../$it` per-file path math
+  - **Verification**
+    - `buildLogicCheck` passes; `compose-check` inputs unchanged
+
+### Task: Generated accessors + detekt pin in catalog (design items 6, 7)
+
+- [x] Drop `VersionCatalogsExtension`/`libsCatalog` in `build-logic/build.gradle.kts`
+  - **Actions Applied**
+    - `build-logic/build.gradle.kts` — `libs.*` accessors for plugins, deps,
+      `libs.versions.ktlint.get()` (drops `requiredVersion`)
+    - `gradle/libs.versions.toml` — added `[versions] detekt-jvm-target = "22"`
+    - detekt `jvmTarget` now reads `libs.versions.detekt.jvm.target.get()`
+  - **Verification**
+    - `buildLogicCheck` BUILD SUCCESSFUL
+    - Updated `GradleStructureTest` centralization assertions to the accessor
+      style (catalog intent preserved)
+
+### Task: Full Gate + commit
+
+- [x] Run the complete verification gate
+  - **Actions Applied**
+    - `fastCheck` BUILD SUCCESSFUL (24 tasks)
+    - `git diff --check` clean (CRLF warnings expected, ignored)
+  - **Verification**
+    - `./gradlew fastCheck` exit 0; `:build-logic:test` executed
+      `CapabilityTaskFunctionalTest` green
+
+## Summary — Current Status
+
+- All 7 approved design items applied to the service + build-logic files.
+- Behavior preserved: task names, gate wiring, ports, contracts untouched.
+- Full unit/int verification green; Gradle 9 API reality noted (`providers.exec`).
+
+## Next Up
+
+- Commit inside `company-check-service` submodule; then commit workspace
+  (`tasks/todo.md` + unchanged mise/doc files pending from earlier session).
