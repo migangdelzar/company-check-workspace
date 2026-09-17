@@ -1,0 +1,7 @@
+# Temporary exception: Spring Boot 4.1.1 manages Tomcat 11.0.24. The upstream
+# upgrade to Tomcat 11.0.25 is tracked for a later Spring Boot milestone.
+# Revisit before this exception expires; do not renew without rechecking the
+# Spring Boot dependency line and application exposure.
+CVE-2026-65182 exp:2026-10-31
+CVE-2026-65905 exp:2026-10-31
+CVE-2026-68525 exp:2026-10-31
