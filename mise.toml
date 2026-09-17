@@ -8,13 +8,21 @@ colima = { version = "0.10.1", lazy = true }
 [settings]
 task.run_auto_install = true
 
+[tasks.setup-jvm]
+description = "Build JVM images and start the single-node stack"
+run = "scripts/mise-setup.sh jvm"
+
+[tasks.setup-native]
+description = "Build native images and start the single-node stack"
+run = "scripts/mise-setup.sh native"
+
 [tasks.validate]
 description = "Run the service fast verification gate"
-run = "company-check-service/gradlew fastCheck"
+run = "./company-check-service/gradlew -p company-check-service fastCheck"
 
 [tasks.service-full]
 description = "Run the complete service verification gate"
-run = "company-check-service/gradlew qualityGate"
+run = "./company-check-service/gradlew -p company-check-service qualityGate"
 
 [tasks.performance]
 description = "Run the service-owned Locust workload"
@@ -22,7 +30,7 @@ run = "company-check-service/performance/run.sh"
 
 [tasks.provider]
 description = "Run provider formatting, type, lint and test checks"
-run = "cd company-check-provider && bun run quality"
+run = "cd company-check-provider && bun install --frozen-lockfile && bun run quality"
 
 [tasks.start]
 description = "Start the single-node Compose stack"
@@ -30,7 +38,7 @@ run = """
 if ! docker info >/dev/null 2>&1 && command -v colima >/dev/null 2>&1; then
   colima start --cpu 4 --memory 4
 fi
-docker-cli-plugin-docker-compose -f compose.yaml -f compose.single.yaml up -d --scale backend=1
+docker-compose -f compose.yaml -f compose.single.yaml up -d --scale backend=1
 """
 
 [tasks.start-distributed]
@@ -39,13 +47,20 @@ run = """
 if ! docker info >/dev/null 2>&1 && command -v colima >/dev/null 2>&1; then
   colima start --cpu 4 --memory 4
 fi
-docker-cli-plugin-docker-compose -f compose.yaml -f compose.distributed.yaml up -d --scale backend=2
+docker-compose -f compose.yaml -f compose.distributed.yaml up -d --scale backend=2
 """
 
 [tasks.stop]
 description = "Stop the Compose stack"
-run = "docker-cli-plugin-docker-compose -f compose.yaml -f compose.distributed.yaml down --remove-orphans"
+run = """
+docker-compose -f compose.yaml -f compose.single.yaml down --remove-orphans
+docker-compose -f compose.yaml -f compose.distributed.yaml down --remove-orphans
+"""
 
 [tasks.logs]
 description = "Follow single-node service logs"
-run = "docker-cli-plugin-docker-compose -f compose.yaml -f compose.single.yaml logs -f backend free-provider premium-provider"
+run = "docker-compose -f compose.yaml -f compose.single.yaml logs -f backend free-provider premium-provider"
+
+[tasks.compose-check]
+description = "Validate single-node and distributed Compose configurations"
+run = "docker-compose -f compose.yaml -f compose.single.yaml config >/dev/null && docker-compose -f compose.yaml -f compose.distributed.yaml config >/dev/null"
