@@ -77,39 +77,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 12
-  prometheus:
-    image: ${PROMETHEUS_IMAGE:?set PROMETHEUS_IMAGE}
-    profiles: [observability]
-    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus", "--storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-24h}", "--storage.tsdb.retention.size=${PROMETHEUS_RETENTION_SIZE:-512MB}"]
-    volumes: [prometheus-data:/prometheus, ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro]
-    networks: [internal]
-    depends_on: { backend: { condition: service_healthy } }
-  mimir:
-    image: ${MIMIR_IMAGE:?set MIMIR_IMAGE}
-    profiles: [observability]
-    command: [-config.file=/etc/mimir/config.yml]
-    volumes: [mimir-data:/data, ./observability/mimir/config.yml:/etc/mimir/config.yml:ro]
-    networks: [internal]
-  loki:
-    image: ${LOKI_IMAGE:?set LOKI_IMAGE}
-    profiles: [observability]
-    command: [-config.file=/etc/loki/config.yml]
-    volumes: [loki-data:/loki, ./observability/loki/config.yml:/etc/loki/config.yml:ro]
-    networks: [internal]
-  tempo:
-    image: ${TEMPO_IMAGE:?set TEMPO_IMAGE}
-    profiles: [observability]
-    command: [-config.file=/etc/tempo/config.yml]
-    volumes: [tempo-data:/var/tempo, ./observability/tempo/config.yml:/etc/tempo/config.yml:ro]
-    networks: [internal]
-  grafana:
-    image: ${GRAFANA_IMAGE:?set GRAFANA_IMAGE}
-    profiles: [observability]
-    environment: { GF_AUTH_ANONYMOUS_ENABLED: "true", GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer, GF_USERS_ALLOW_SIGN_UP: "false", GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:-change-me-locally}" }
-    ports: ["${GRAFANA_PORT:-3000}:3000"]
-    volumes: [grafana-data:/var/lib/grafana, ./observability/grafana/provisioning:/etc/grafana/provisioning:ro, ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro]
-    networks: [internal]
-    depends_on: [prometheus, mimir, loki, tempo]
   locust:
     image: ${LOCUST_IMAGE:?set LOCUST_IMAGE}
     profiles: [performance]
@@ -122,8 +89,3 @@ services:
 networks:
   internal: { internal: true }
 volumes:
-  prometheus-data:
-  mimir-data:
-  loki-data:
-  tempo-data:
-  grafana-data:

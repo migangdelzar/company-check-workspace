@@ -22,7 +22,7 @@ company-check-service/gradlew -p company-check-service qualityGate
 # Validate the service OpenAPI contract
 company-check-service/gradlew -p company-check-service openApiValidate
 
-# Run the service-owned Locust workload through Gradle
+# Run the service-owned Locust workload
 mise run performance
 
 # Provider checks
@@ -40,6 +40,8 @@ docker compose ps
 docker compose down
 ```
 
-Compose definitions and GitHub Actions are kept in the parent; service tests,
+Compose definitions and GitHub Actions are kept in the parent. Service tests,
 the `performance/` Locust workload, and build implementation belong to the
-service submodule.
+service submodule. Performance runs are intentionally not cached because they
+measure external Docker/network behavior; Gradle caching remains enabled for
+build and unit-test tasks.
