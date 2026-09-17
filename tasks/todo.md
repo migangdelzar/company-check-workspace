@@ -3,11 +3,21 @@
 - [x] Restate goal and acceptance criteria
 - [x] Locate current implementation, docs, and package boundaries
 - [x] Approve minimal documentation design
-- [ ] Update ADR index and decisions
-- [ ] Update architecture prose and Mermaid diagrams
-- [ ] Update top-level README architecture wording
-- [ ] Run stale-reference, Mermaid, diff, and Compose checks
-- [ ] Summarize results and lessons
+- [x] Update ADR index and decisions
+- [x] Update architecture prose and Mermaid diagrams
+- [x] Update top-level README architecture wording
+- [x] Run stale-reference, Mermaid, diff, and Compose checks
+- [x] Summarize results and lessons
+
+## Results
+
+- Refreshed ADR 0001 and corrected implementation references across ADRs.
+- Reworked all architecture Mermaid diagrams and layer descriptions around the
+  current `config`/`controller`/`service`/`repository`/`client` structure.
+- Updated README architecture wording without changing commands or endpoints.
+- Stale-reference scan, Mermaid fence check, `git diff --check`, and both
+  single/distributed Compose merges passed. The Docker CLI lacks the Compose
+  plugin; standalone `docker-compose 5.1.4` passed the equivalent checks.
 
 ## Working notes
 

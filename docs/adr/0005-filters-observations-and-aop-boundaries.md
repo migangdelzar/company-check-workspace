@@ -13,17 +13,19 @@ ordering and failure semantics unclear.
 
 - Use `InboundRateLimitFilter` for admission control on `GET /backend-service`.
   It runs before controller binding and can return `429` or `503` without
-  entering the application use case.
-- Use Resilience4j decorators/annotations at provider operations where retry,
+  entering `VerificationService`.
+- Use Resilience4j decorators/annotations on provider client operations where retry,
   circuit-breaker, rate-limit, and bulkhead ordering is meaningful.
-- Use Micrometer `@Observed` on use cases for stable operation metrics/traces.
-- Keep idempotency and verification conflict logic in application services and
+- Use Micrometer `@Observed` on `VerificationService`, `ProviderService`, and
+  `ExpirationService` for stable operation metrics/traces; `ObservedAspect` is
+  registered by `config.ObservabilityConfiguration`.
+- Keep idempotency and verification conflict logic in services and
   PostgreSQL, not in AOP advice.
 
 ## Consequences
 
 The request filter is explicit and easy to test as a servlet boundary. AOP is
-limited to cross-cutting telemetry/resilience and does not hide business state
+limited to cross-cutting telemetry and resilience and does not hide business state
 transitions. The trade-off is that the same operation may have both filter and
 method-level tests, which is intentional because they protect different
 boundaries.

@@ -11,9 +11,9 @@ large object-relational model; its SQL is small, explicit, and query-oriented.
 
 ## Decision
 
-Use PostgreSQL as the source of truth, Spring JDBC `JdbcClient` for repository
-operations, Flyway for schema migration, and HikariCP for the JDBC connection
-pool. The `verifications` table stores the lifecycle state, claim token,
+Use PostgreSQL as the source of truth, Spring JDBC `JdbcClient` through
+`JdbcVerificationRepository`, Flyway for schema migration, and HikariCP for the
+JDBC connection pool. The `verifications` table stores the lifecycle state, claim token,
 timestamps, and JSONB provider result. Partial indexes support expiration and
 normalized-query lookup.
 

@@ -11,7 +11,7 @@ Dockerfiles would duplicate Spring Boot runtime knowledge.
 
 ## Decision
 
-Use Gradle Kotlin DSL with included convention plugins for service build logic,
+Use Gradle Kotlin DSL with the included `build-logic` convention plugins for service build logic,
 configuration/build caches, strict dependency verification, Spotless, Checkstyle,
 Detekt, Error Prone, NullAway, JaCoCo, and OpenAPI validation. Use Spring Boot's
 Paketo `bootBuildImage` integration for OCI images. Require builder, run, and
@@ -24,5 +24,5 @@ overlays for single-node and distributed topologies.
 
 Build policy is centralized and testable. Paketo supplies a supported JVM image
 layout and non-root runtime contract. Digest pinning improves repeatability but
-requires approved image values in local/CI configuration. Compose remains a
+requires approved image values in local/CI settings. Compose remains a
 workspace integration tool, not a replacement for the service's Gradle tests.

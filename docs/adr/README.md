@@ -2,7 +2,7 @@
 
 | ADR | Decision | Status |
 |---|---|---|
-| [0001](0001-hexagonal-modulith.md) | Keep the service as a hexagonal Spring Modulith application | Accepted |
+| [0001](0001-hexagonal-modulith.md) | Keep the service as a conventional layered Spring Modulith application | Accepted |
 | [0002](0002-postgresql-jdbcclient-and-hikari.md) | Use PostgreSQL with `JdbcClient` and HikariCP as the authoritative store | Accepted |
 | [0003](0003-redis-for-distributed-coordination.md) | Use Redis only when coordination must cross service instances | Accepted |
 | [0004](0004-provider-http-pools-and-resilience.md) | Use one shared provider HTTP pool with Resilience4j limits | Accepted |

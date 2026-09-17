@@ -4,6 +4,7 @@
 flowchart LR
   Fast[fastCheck] --> Unit[unit tests + coverage]
   Fast --> Static[Spotless + Checkstyle + Detekt + Error Prone]
+  Fast --> Architecture[Layered dependency + Modulith tests]
   Full[qualityGate] --> Fast
   Full --> IT[integrationTest]
   IT --> TC[Testcontainers]
@@ -20,8 +21,12 @@ flowchart LR
 - Contract tests validate the generated HTTP surface against
   `openapi/backend-api.yaml`; e2e/Compose checks validate the assembled runtime
   images and profile overlays.
-- JaCoCo reports cover application/domain logic while adapter integration
-  behavior is exercised separately against real PostgreSQL/Redis containers.
+- JaCoCo reports cover service/model and workflow logic while repository
+  integration behavior is exercised separately against real PostgreSQL/Redis
+  containers.
+- Layered architecture tests verify controller/service/repository/client
+  dependency direction and prevent provider DTOs, repository entities, or
+  transport types from leaking across boundaries.
 - Build artifacts are checked through `bootJar`, Paketo image validation, image
   smoke checks, dependency locks, and dependency verification metadata.
 - On Colima or another VM-backed Docker context, set the Docker host and socket

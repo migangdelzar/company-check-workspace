@@ -12,9 +12,11 @@ pipeline and [Starting the application](startup.md) for commands.
 ```mermaid
 flowchart LR
   Host[Host :8080] --> Backend[backend\nsingle-node]
-  Backend --> PG[(postgres)]
-  Backend --> Free[free-provider]
-  Backend --> Premium[premium-provider]
+  Backend --> Filter[InboundRateLimitFilter]
+  Filter --> Services[VerificationService + ProviderService]
+  Services --> PG[(postgres)]
+  Services --> Free[free-provider]
+  Services --> Premium[premium-provider]
 ```
 
 There is one backend replica, local coordination, and no Redis service. This is
@@ -34,8 +36,8 @@ the simplest topology for local API exploration.
 
 ```mermaid
 flowchart LR
-  LoadBalancer[Internal caller / Locust] --> B1[backend replica 1]
-  LoadBalancer --> B2[backend replica 2]
+  LoadBalancer[Internal caller / Locust] --> B1[backend replica 1\ncontroller + service]
+  LoadBalancer --> B2[backend replica 2\ncontroller + service]
   B1 --> PG[(postgres)]
   B2 --> PG
   B1 --> Redis[(redis)]
@@ -65,7 +67,7 @@ three backends through provisioned data sources.
 
 ```mermaid
 flowchart LR
-  Backend[Backend replicas]
+  Backend[Backend replicas\nActuator + Micrometer]
   Prom[Prometheus]
   Alloy[Grafana Alloy]
   Tempo[Tempo]

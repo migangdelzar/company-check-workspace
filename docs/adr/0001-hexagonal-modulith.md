@@ -1,33 +1,41 @@
-# ADR 0001: Hexagonal Modulith Boundaries
+# ADR 0001: Layered Modulith Boundaries
 
 - Status: Accepted
 - Date: 2026-09-16
 
 ## Context
 
-Company Check has a small domain but several infrastructure concerns: HTTP,
-PostgreSQL, Redis, provider simulators, scheduling, rate limiting, and
-observability. Directly coupling the domain to those technologies would make
-single-node tests and distributed deployment harder to reason about.
+Company Check has a compact verification workflow and several infrastructure
+concerns: HTTP, PostgreSQL, Redis, provider simulators, scheduling, rate
+limiting, and observability. The service was simplified from an over-factored
+DDD/hexagonal package tree to make the current execution path easier to follow
+without weakening its tested boundaries.
 
 ## Decision
 
-Use a Spring Boot application organized around hexagonal ports and adapters:
+Use one Spring Boot Modulith module organized as conventional layers:
 
-- `domain` contains verification state and business rules.
-- `application` contains use cases and ports.
-- `adapter/in` contains HTTP and scheduling entry points.
-- `adapter/out` contains persistence, coordination, rate limiting, and providers.
-- `configuration` composes the runtime profile and infrastructure beans.
+- `controller` contains HTTP endpoints, API DTOs, inbound admission, and the
+  expiration scheduler.
+- `service` contains verification/provider workflows and `service/model` data.
+- `repository` contains JDBC persistence, coordination, leases, cache, and
+  rate-limit implementations.
+- `client` contains typed FREE/PREMIUM provider HTTP clients and wire DTOs.
+- `mapper` contains explicit conversions between layer representations.
+- `exception` contains application errors and HTTP error mapping.
+- `config` composes profiles, infrastructure beans, properties, and runtime
+  hints.
 
-Spring Modulith and architecture tests protect the package boundaries.
+Spring Modulith and layered architecture tests protect the package boundaries.
 
 ## Consequences
 
-The domain can be tested without PostgreSQL, Redis, or provider HTTP. Adapters
-require explicit wiring, which adds some classes and constructor parameters but
-makes dependencies visible and replaceable.
+Service models and workflows can be tested without PostgreSQL, Redis, or
+provider HTTP. Controllers depend on services; services depend on repository
+and client contracts; concrete infrastructure is wired in `config`. This adds
+some explicit layer types but keeps dependencies visible and replaceable.
 
-Alternatives such as a traditional layered service or a full microservice split
-were rejected: the former hides infrastructure coupling, while the latter adds
-operational cost without an independent deployment boundary today.
+The previous hexagonal package tree was rejected as unnecessary indirection for
+the current scope. A full microservice split remains out of scope because the
+backend and deterministic provider simulator have different deployment roles,
+but the backend has no need to split its small workflow into services.

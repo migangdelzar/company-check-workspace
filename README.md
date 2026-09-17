@@ -24,6 +24,11 @@ and shutdown. For implementation detail, use the focused references:
 For the complete prerequisite, image-build, Compose startup, health-check,
 profile, and shutdown sequence, see [Starting the application](docs/architecture/startup.md).
 
+The backend source is a conventional layered Spring Boot module: controllers
+call services; services use repository and provider-client contracts; `config`
+wires the profile-specific implementations. The deterministic Bun/Fastify
+provider remains a separate deployable simulator.
+
 ## Requirements
 
 - Docker Engine and Docker Compose v2, or `mise` to install the pinned CLI,
@@ -108,6 +113,12 @@ docker build -t company-check-provider:local company-check-provider
   -PimageName=company-check-service:local
 ```
 
+The service keeps Temurin suitable for regular JVM builds and automatically
+provisions a native-image-capable GraalVM toolchain for local
+`nativeCompile`. For the Compose path, build the native OCI image through
+Paketo by adding `-PimageVariant=native -PnativeOptimization=b` to the command
+above. Paketo provisions its native toolchain inside the builder container.
+
 Copy the workspace environment template:
 
 ```sh
@@ -166,10 +177,10 @@ curl --fail http://localhost:8080/verifications/"$verification_id"
    database work. Single node uses a local Resilience4j limiter; distributed
    mode uses a Redis atomic fixed-window limiter. Rejection is `429` with
    `Retry-After`; inability to coordinate admission is `503`.
-2. The application checks PostgreSQL for the verification ID. Reusing the ID
+2. `VerificationService` checks PostgreSQL for the verification ID. Reusing the ID
    with the same normalized query is idempotent; reusing it with a different
    query is a conflict. A new request is inserted as `IN_PROGRESS`.
-3. The application acquires a query lease. Single node uses an in-process
+3. `VerificationService` acquires a query lease. Single node uses an in-process
    lock; distributed mode uses Redis. A competing request waits for a shared
    terminal result or re-checks PostgreSQL after the bounded lease wait. This
    prevents duplicate provider work across replicas.
@@ -302,6 +313,20 @@ PERFORMANCE_USERS=10 PERFORMANCE_DURATION=60s \
 ```
 
 Artifacts are written to `.performance-artifacts/`.
+
+To exercise the native image across two Redis-coordinated backend replicas:
+
+```sh
+./company-check-service/gradlew -p company-check-service image \
+  -PpaketoBuilderImage=<approved-builder@sha256:64-hex-digest> \
+  -PpaketoRunImage=<approved-run@sha256:64-hex-digest> \
+  -PimageVariant=native \
+  -PnativeOptimization=b \
+  -PimageName=company-check-service:native-local
+COMPANY_CHECK_SERVICE_IMAGE=company-check-service:native-local \
+PERFORMANCE_TOPOLOGY=distributed \
+  ./company-check-service/performance/run.sh
+```
 
 ## Workspace task aliases
 

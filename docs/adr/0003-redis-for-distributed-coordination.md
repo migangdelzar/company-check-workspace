@@ -15,8 +15,9 @@ Keep two runtime profiles:
 
 - `single-node`: local coordination and Resilience4j rate limiting; Redis is not
   auto-configured.
-- `distributed`: Redis-backed coordination, Redis-backed rate limiting, shared
-  cache entries, and a TTL-based expiration lease.
+- `distributed`: Redis-backed coordination through `repository.coordination`,
+  Redis-backed rate limiting through `repository.ratelimit`, shared cache
+  entries, and a TTL-based expiration lease.
 
 PostgreSQL remains authoritative. Redis may accelerate or coordinate work, but a
 Redis outage must not turn cached state into the source of truth.

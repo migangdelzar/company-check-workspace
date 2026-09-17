@@ -7,10 +7,12 @@ batch.
 
 ```mermaid
 flowchart TD
-  Ready[Application ready] --> Reaper[Scheduled reaper]
-  Reaper --> Lock{Acquire expiration lease}
+  Ready[ApplicationReadyEvent] --> Scheduler[VerificationExpirationScheduler]
+  Tick[Fixed-delay schedule] --> Scheduler
+  Scheduler --> Lock{ExpirationLock.tryAcquire}
   Lock -- no --> Stop[Return; another instance owns it]
-  Lock -- yes --> Batch[Expire up to 100\nIN_PROGRESS and expires_at <= now]
+  Lock -- yes --> Expiration[ExpirationService.expire]
+  Expiration --> Batch[JdbcVerificationRepository.expireBatch\nup to 100 rows]
   Batch --> Count{Expired == 100?}
   Count -- yes --> Batch
   Count -- no --> Release[Release lease]

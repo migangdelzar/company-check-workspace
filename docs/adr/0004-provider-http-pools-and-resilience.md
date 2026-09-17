@@ -11,8 +11,9 @@ exhaust provider capacity and the service itself.
 
 ## Decision
 
-Use Apache HttpClient 5 with one shared, closeable pooling client for the free
-and premium provider adapters. Configure separate total/per-route connection
+Use Spring `RestClient` backed by Apache HttpClient 5 with one shared, closeable
+pooling client for the `FreeProviderClient` and `PremiumProviderClient` clients.
+Configure separate total/per-route connection
 limits, connection acquisition timeout, connect timeout, response timeout,
 stale-connection validation, and idle/expired eviction.
 

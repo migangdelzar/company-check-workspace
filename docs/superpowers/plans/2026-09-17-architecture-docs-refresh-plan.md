@@ -34,19 +34,19 @@
 **Interfaces:**
 - Produces ADR terminology consistent with the actual service package tree and current configuration class names.
 
-- [ ] **Step 1: Rewrite ADR 0001 in place.**
+- [x] **Step 1: Rewrite ADR 0001 in place.**
 
   Record the current conventional layered Spring Boot Modulith boundary, explain that the filename is retained for link stability, and remove claims that the implementation uses `domain`, `application`, `adapter/in`, or `adapter/out` packages.
 
-- [ ] **Step 2: Correct stale implementation references in ADRs 0002–0008.**
+- [x] **Step 2: Correct stale implementation references in ADRs 0002–0008.**
 
   Keep their accepted decisions, but name actual implementations such as `JdbcVerificationRepository`, `CoordinationRepository`, `ProviderClient`, `InboundRateLimitFilter`, `ObservedAspect`, and `config/*` where the current source supports those details.
 
-- [ ] **Step 3: Update the ADR index summary.**
+- [x] **Step 3: Update the ADR index summary.**
 
   Change the ADR 0001 row to describe layered Modulith boundaries while preserving all document links and statuses.
 
-- [ ] **Step 4: Search the ADR set for obsolete package vocabulary.**
+- [x] **Step 4: Search the ADR set for obsolete package vocabulary.**
 
   Run:
 
@@ -72,23 +72,23 @@
 **Interfaces:**
 - Produces architecture pages that name current service classes and packages, while retaining public routes, profile behavior, resource bounds, and runtime topology.
 
-- [ ] **Step 1: Update the architecture index and overview.**
+- [x] **Step 1: Update the architecture index and overview.**
 
   Describe the layered backend and separate provider simulator. Add the real layer ownership and explain that `config` wires implementations while `mapper` and `exception` cross-cut layer boundaries deliberately.
 
-- [ ] **Step 2: Replace the runtime layer diagram and package table.**
+- [x] **Step 2: Replace the runtime layer diagram and package table.**
 
   Diagram `config -> controller -> service -> repository/client`, with `mapper` and `exception` shown as supporting boundaries. Replace all `application`, `domain`, `adapter.*`, and `configuration.*` package claims with actual paths and class responsibilities.
 
-- [ ] **Step 3: Update request, recovery, provider, and expiration flows.**
+- [x] **Step 3: Update request, recovery, provider, and expiration flows.**
 
   Rename `StartVerificationService` to `VerificationService`, `ProviderResolutionService` to `ProviderService`, and show `VerificationStoreService`, `VerificationRecoveryService`, `JdbcVerificationRepository`, and `CoordinationRepository` where they participate. Keep the exact endpoint paths and failure semantics.
 
-- [ ] **Step 4: Update runtime/build/deployment/observability diagrams.**
+- [x] **Step 4: Update runtime/build/deployment/observability diagrams.**
 
   Ensure every Mermaid block reflects the Compose files: base backend/providers/PostgreSQL, single-node local coordination, distributed Redis and scaled backend replicas, optional Locust, and the Prometheus/Alloy/Tempo/Loki/Grafana overlay.
 
-- [ ] **Step 5: Update testing/startup/resilience prose.**
+- [x] **Step 5: Update testing/startup/resilience prose.**
 
   Keep commands and current bounds accurate. Clarify that architecture tests enforce layered boundaries and that provider DTOs, repository entities, and controller DTOs do not cross their intended layers.
 
@@ -100,11 +100,11 @@
 **Interfaces:**
 - Produces README architecture summaries that link to the refreshed docs without changing setup commands or API examples.
 
-- [ ] **Step 1: Replace stale layer terminology.**
+- [x] **Step 1: Replace stale layer terminology.**
 
   Update architecture-related sentences to identify `VerificationService`, `ProviderService`, PostgreSQL persistence, profile-specific coordination, and the separate provider simulator.
 
-- [ ] **Step 2: Check README links and commands remain unchanged.**
+- [x] **Step 2: Check README links and commands remain unchanged.**
 
   Run:
 
@@ -119,7 +119,7 @@
 **Files:**
 - Modify: `tasks/todo.md`
 
-- [ ] **Step 1: Search all scoped docs for stale references.**
+- [x] **Step 1: Search all scoped docs for stale references.**
 
   Run:
 
@@ -129,7 +129,7 @@
 
   Expected: no references to removed production packages or removed service class names. Historical ADR text must distinguish rejected alternatives from the current design.
 
-- [ ] **Step 2: Validate Mermaid fences and current component names.**
+- [x] **Step 2: Validate Mermaid fences and current component names.**
 
   Run:
 
@@ -140,7 +140,7 @@
 
   Expected: balanced Mermaid fences and current components represented in the architecture set.
 
-- [ ] **Step 3: Validate formatting and Compose syntax when available.**
+- [x] **Step 3: Validate formatting and Compose syntax when available.**
 
   Run:
 
@@ -152,11 +152,11 @@
 
   Expected: no whitespace errors; both Compose merges render successfully. If Docker is unavailable, record that exact limitation in the final report.
 
-- [ ] **Step 4: Update the checklist with results.**
+- [x] **Step 4: Update the checklist with results.**
 
   Mark completed tasks in `tasks/todo.md` and add a Results section listing changed doc groups and verification outcomes.
 
-- [ ] **Step 5: Commit the documentation refresh.**
+- [x] **Step 5: Commit the documentation refresh.**
 
   ```sh
   git add README.md docs/adr docs/architecture tasks/todo.md

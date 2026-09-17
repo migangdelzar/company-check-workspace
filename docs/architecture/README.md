@@ -12,3 +12,8 @@
 The diagrams describe the current implementation. Source code and configuration
 remain authoritative when an implementation changes before this documentation is
 updated.
+
+The backend currently uses a conventional layered module: `config` wires the
+runtime, `controller` owns HTTP/scheduling boundaries, `service` owns workflows,
+`repository` owns state/coordination, `client` owns provider HTTP, `mapper`
+owns explicit conversions, and `exception` owns error translation.

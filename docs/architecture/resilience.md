@@ -12,17 +12,20 @@ sequenceDiagram
   participant C as Caller
   participant F as InboundRateLimitFilter
   participant L as Local or Redis limiter
-  participant U as Use case
-  participant P as PostgreSQL
+  participant Ctl as BackendServiceController
+  participant S as VerificationService
+  participant P as JdbcVerificationRepository
 
   C->>F: GET /backend-service?...
   F->>L: consume caller window
   alt accepted
     L-->>F: permit
-    F->>U: continue request
-    U->>P: start or retrieve verification
-    P-->>U: result or verification id
-    U-->>C: HTTP response
+    F->>Ctl: continue request
+    Ctl->>S: start or retrieve verification
+    S->>P: repository operation
+    P-->>S: result or verification id
+    S-->>Ctl: VerificationResult
+    Ctl-->>C: HTTP response
   else rejected
     L-->>F: rejected + retry delay
     F-->>C: 429 Too Many Requests + Retry-After
@@ -50,21 +53,21 @@ provider quota or a provider bulkhead slot.
 
 ```mermaid
 flowchart LR
-  Request[Start verification] --> Free[Free provider policy]
+  Request[VerificationService.start] --> Free[FreeProviderClient]
   Free -->|success| Result[Normalize and persist result]
-  Free -->|transient or malformed failure| Fallback[FallbackPolicy]
-  Fallback --> Premium[Premium provider policy]
+  Free -->|transient, malformed, or empty result| Fallback[ProviderService\nfallback decision]
+  Fallback --> Premium[PremiumProviderClient]
   Premium --> Result
   Free -->|4xx client error| Error[Return mapped client error]
   Premium -->|failure| Error2[Return mapped provider failure]
 ```
 
 The resolution order is free provider first and premium provider second. The
-domain `FallbackPolicy` permits fallback for `Unavailable`, `Timeout`, and
-`Malformed` failures. A provider `ClientError` is considered a caller or
+`ProviderService` permits fallback for `Unavailable`, `Timeout`, and `Malformed`
+failures, plus an empty successful FREE result. A provider `ClientError` is a caller or
 contract problem and is returned without silently charging the premium
 provider. If the fallback also fails, the final failure is persisted/mapped
-according to the application use case and its HTTP error policy.
+according to `VerificationService` and its HTTP error policy.
 
 The free-provider call can reach the fallback path because of:
 
@@ -73,17 +76,17 @@ The free-provider call can reach the fallback path because of:
 - an invalid response body or provider contract violation;
 - an open circuit, exhausted bulkhead, or provider rate-limit rejection.
 
-The adapter translates HTTP 4xx responses to `ClientError`, 5xx and other
+The provider client translates HTTP 4xx responses to `ClientError`, 5xx and other
 unsuccessful responses to transient failures, socket timeouts to `Timeout`,
 and malformed payloads to `Malformed`. Resilience4j rejection is represented
 as provider unavailability. This keeps infrastructure exceptions out of the
-domain while preserving the fallback decision.
+service model while preserving the fallback decision.
 
 ## Provider resilience pipeline
 
 ```mermaid
 flowchart TB
-  Call[Provider lookup] --> Retry[Retry: max 2 attempts, 25 ms wait]
+  Call[ProviderService.resolve] --> Retry[Retry: max 2 attempts, 25 ms wait]
   Retry --> Circuit[Circuit breaker: 20-call window, 50% threshold]
   Circuit --> Quota[Provider rate limiter]
   Quota --> Bulkhead[Semaphore bulkhead: 50 calls, no queue]

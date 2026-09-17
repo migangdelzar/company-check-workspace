@@ -11,42 +11,45 @@ sequenceDiagram
   autonumber
   participant C as Client
   participant F as Inbound filter
-  participant S as StartVerificationService
-  participant P as PostgreSQL
-  participant K as Coordination
-  participant H as Provider HTTP client
+  participant Ctl as BackendServiceController
+  participant S as VerificationService
+  participant R as JdbcVerificationRepository
+  participant K as CoordinationRepository
+  participant H as ProviderService + ProviderClient
 
   C->>F: GET /backend-service
   F->>F: inbound rate-limit admission
   alt rejected
     F-->>C: 429 or 503
   else admitted
-    F->>S: StartVerificationCommand
-    S->>P: findById(verificationId)
+    F->>Ctl: validated BackendServiceRequest
+    Ctl->>S: start(StartVerificationCommand)
+    S->>R: findById(verificationId)
     alt existing ID
-      P-->>S: stored verification
-      S-->>C: result or conflict/in-progress
+      R-->>S: stored verification
+      S-->>Ctl: result or conflict/in-progress
     else new ID
-      S->>P: INSERT IN_PROGRESS ON CONFLICT DO NOTHING
+      S->>R: insertInProgress(verification)
       S->>K: acquire(normalized query)
       alt another request owns the query
         K-->>S: not acquired
         S->>K: read shared/cached result
-        S-->>C: shared result or IN_PROGRESS
+        S-->>Ctl: shared result or IN_PROGRESS
       else owner
-        S->>P: find completed result by normalized query
+        S->>R: findByQuery(normalized query)
         alt reusable result exists
-          S->>P: complete current record from shared result
+          S->>R: complete current record from shared result
         else provider lookup
-          S->>H: bounded pooled HTTP request
+          S->>H: FREE then PREMIUM fallback, bounded HTTP
           H-->>S: provider result/failure
-          S->>P: claim and complete transactionally
+          S->>R: claim and complete transactionally
           S->>K: publish terminal result after commit
         end
-        S-->>C: verification response
+        S-->>Ctl: verification response
       end
     end
   end
+  Ctl-->>C: VerificationResponse
 ```
 
 `GET /verifications/{verificationId}` is read-only and bypasses provider
@@ -61,7 +64,7 @@ The request path has three independent protection stages:
    Resilience4j limiter is used in `single-node`; a Redis atomic fixed-window
    script is used in `distributed`. Rejection returns `429` with `Retry-After`;
    Redis unavailability returns `503` and does not bypass the limit.
-2. `ProviderResolutionService` calls the free provider first. Unavailable,
+2. `ProviderService` calls the free provider first. Unavailable,
    timeout, malformed, circuit-open, bulkhead-rejected, or quota-rejected
    results trigger the premium fallback. A known provider 4xx is a client error
    and does not trigger fallback.
