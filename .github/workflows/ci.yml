@@ -13,10 +13,9 @@ on:
       image-variant:
         description: Image variant to validate when run-validation is enabled
         required: true
-        default: all
+        default: jvm
         type: choice
         options:
-          - all
           - jvm
           - native
       paketo-builder-image:
@@ -25,6 +24,14 @@ on:
         type: string
       paketo-run-image:
         description: Immutable Paketo run image reference
+        required: false
+        type: string
+      postgres-image:
+        description: Immutable PostgreSQL image reference for E2E and Locust
+        required: false
+        type: string
+      redis-image:
+        description: Immutable Redis image reference for E2E and Locust
         required: false
         type: string
 
@@ -68,7 +75,7 @@ jobs:
       - id: paths
         shell: bash
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
         run: |
           changed="$(git diff --name-only "$BASE_SHA" "$GITHUB_SHA")"
           matches() { printf '%s\n' "$changed" | grep -Eq "$1"; }
@@ -104,8 +111,13 @@ jobs:
 
   validation:
     if: github.event_name == 'workflow_dispatch' && inputs.run-validation == true
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/validation.yml
     with:
       paketo-builder-image: ${{ inputs.paketo-builder-image }}
       paketo-run-image: ${{ inputs.paketo-run-image }}
       image-variant: ${{ inputs.image-variant }}
+      postgres-image: ${{ inputs.postgres-image }}
+      redis-image: ${{ inputs.redis-image }}

@@ -1,0 +1,95 @@
+name: Build validation images
+
+on:
+  workflow_call:
+    inputs:
+      paketo-builder-image:
+        required: true
+        type: string
+      paketo-run-image:
+        required: true
+        type: string
+      image-variant:
+        required: true
+        type: string
+    outputs:
+      service-image:
+        description: Immutable GHCR service image reference
+        value: ${{ jobs.build.outputs.service-image }}
+      provider-image:
+        description: Immutable GHCR provider image reference
+        value: ${{ jobs.build.outputs.provider-image }}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    outputs:
+      service-image: ${{ steps.images.outputs.service-image }}
+      provider-image: ${{ steps.images.outputs.provider-image }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: '1.3.14'
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build or reuse immutable validation images
+        id: images
+        shell: bash
+        env:
+          OWNER: ${{ github.repository_owner }}
+          SHA: ${{ github.sha }}
+          VARIANT: ${{ inputs.image-variant }}
+          PAKETO_BUILDER_IMAGE: ${{ inputs.paketo-builder-image }}
+          PAKETO_RUN_IMAGE: ${{ inputs.paketo-run-image }}
+        working-directory: .
+        run: |
+          set -euo pipefail
+          [[ "$VARIANT" == "jvm" || "$VARIANT" == "native" ]]
+          [[ "$PAKETO_BUILDER_IMAGE" =~ ^[^[:space:]@]+@sha256:[0-9a-fA-F]{64}$ ]]
+          [[ "$PAKETO_RUN_IMAGE" =~ ^[^[:space:]@]+@sha256:[0-9a-fA-F]{64}$ ]]
+
+          service_ref="ghcr.io/${OWNER}/company-check-service:validation-${SHA}-${VARIANT}"
+          provider_ref="ghcr.io/${OWNER}/company-check-provider:validation-${SHA}-${VARIANT}"
+
+          if ! docker buildx imagetools inspect "$provider_ref" >/dev/null 2>&1; then
+            docker build --tag "$provider_ref" company-check-provider
+            docker push "$provider_ref"
+          fi
+
+          if ! docker buildx imagetools inspect "$service_ref" >/dev/null 2>&1; then
+            ./company-check-service/gradlew -p company-check-service image \
+              -PimageVariant="$VARIANT" \
+              -PnativeOptimization=b \
+              -PpaketoBuilderImage="$PAKETO_BUILDER_IMAGE" \
+              -PpaketoRunImage="$PAKETO_RUN_IMAGE" \
+              -PimagePlatform=linux/amd64 \
+              -PimageName="$service_ref" \
+              -PpublishImage=true \
+              --dependency-verification=strict --no-parallel --max-workers=1
+          fi
+
+          service_digest="$(docker buildx imagetools inspect "$service_ref" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+          provider_digest="$(docker buildx imagetools inspect "$provider_ref" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+          [[ "$service_digest" =~ ^sha256:[0-9a-fA-F]{64}$ ]]
+          [[ "$provider_digest" =~ ^sha256:[0-9a-fA-F]{64}$ ]]
+          {
+            printf 'service-image=%s@%s\n' "$service_ref" "$service_digest"
+            printf 'provider-image=%s@%s\n' "$provider_ref" "$provider_digest"
+          } >>"$GITHUB_OUTPUT"
