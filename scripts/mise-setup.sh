@@ -19,7 +19,7 @@ fi
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 memory_gib=4
 if [[ "$variant" == "native" ]]; then
-  memory_gib=12
+  memory_gib=11
 fi
 
 default_paketo_builder_image='paketobuildpacks/builder-jammy-base@sha256:aadea5426b08ec201d62a74ac46b61c0452b9bd139806f071e4a81e362a43d83'
