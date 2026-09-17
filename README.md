@@ -342,6 +342,8 @@ mise run current              # show active tool versions
 mise run outdated             # check pinned tools for newer versions
 mise run setup-jvm            # build JVM images + start single-node
 # or: mise run setup-native
+mise run build-jvm            # build JVM images only (no stack)
+mise run build-native         # build native images only (no stack)
 mise run start                # start an already-built single-node stack
 mise run start-distributed    # start the distributed two-replica stack
 mise run start-observability  # add Prometheus, Grafana, Tempo, Loki, Alloy
@@ -349,11 +351,20 @@ mise run health               # backend /actuator/health
 mise run smoke                # one verification through the API
 mise run validate             # fast service gate
 mise run service-full         # complete service gate (Testcontainers)
+mise run integration          # service integration test suite
+mise run contract             # service contract tests + OpenAPI validation
+mise run e2e                  # service E2E test suite
+mise run openapi              # openApiValidate only
 mise run provider             # provider quality checks
+mise run provider-security    # Trivy scan of the provider image
+mise run provider-licenses    # provider dependency license check
+mise run verify               # all service + provider + compose gates
+mise run image-smoke          # build service image + bounded Docker smoke
 mise run compose-check        # validate all Compose overlays
 mise run ps                   # stack status
 mise run logs                 # follow single-node logs
-mise run performance          # bounded Locust workload
+mise run performance          # bounded Locust workload (single-node)
+# or: mise run performance-distributed
 mise run stop                 # stop single-node and distributed stacks
 mise run clean                # + remove Compose volumes and local images
 ```

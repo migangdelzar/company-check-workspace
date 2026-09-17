@@ -58,26 +58,62 @@ run = "scripts/mise-setup.sh jvm"
 description = "Build native images and start the single-node stack"
 run = "scripts/mise-setup.sh native"
 
+[tasks.build-jvm]
+description = "Build JVM service and provider images without starting the stack"
+run = "scripts/mise-setup.sh jvm --build-only"
+
+[tasks.build-native]
+description = "Build native service and provider images without starting the stack"
+run = "scripts/mise-setup.sh native --build-only"
+
+[tasks.image-smoke]
+description = "Build the service image and run the bounded Docker smoke check"
+run = "scripts/mise-gradle.sh containerCheck"
+
 [tasks.validate]
 description = "Run the service fast verification gate"
 run = "./company-check-service/gradlew -p company-check-service fastCheck"
 
 [tasks.service-full]
 description = "Run the complete service verification gate"
-run = """
-context="$(docker context show 2>/dev/null || true)"
-case "$context" in
-  colima-*)
-    export DOCKER_HOST="$(docker context inspect "$context" --format '{{.Endpoints.docker.Host}}')"
-    export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
-    ;;
-esac
-./company-check-service/gradlew -p company-check-service qualityGate
-"""
+run = "scripts/mise-gradle.sh qualityGate"
+
+[tasks.integration]
+description = "Run the service integration test suite"
+run = "scripts/mise-gradle.sh integrationCheck"
+
+[tasks.contract]
+description = "Run the service API contract tests and OpenAPI validation"
+run = "scripts/mise-gradle.sh contractCheck"
+
+[tasks.e2e]
+description = "Run the service E2E test suite"
+run = "scripts/mise-gradle.sh e2eCheck"
+
+[tasks.openapi]
+description = "Validate the checked-in OpenAPI contracts"
+run = "scripts/mise-gradle.sh openApiValidate"
 
 [tasks.provider]
 description = "Run provider formatting, type, lint and test checks"
 run = "cd company-check-provider && bun install --frozen-lockfile && bun run quality"
+
+[tasks.provider-security]
+description = "Scan the provider for high and critical vulnerabilities"
+run = "cd company-check-provider && bun install --frozen-lockfile && bun run security"
+
+[tasks.provider-licenses]
+description = "Verify provider dependency licenses"
+run = "cd company-check-provider && bun run licenses"
+
+[tasks.verify]
+description = "Run every provider and service gate (fast + containers + contracts)"
+run = """
+mise run service-full
+mise run provider
+mise run provider-security
+mise run compose-check
+"""
 
 [tasks.compose-check]
 description = "Validate single-node, distributed, and observability Compose configurations"
@@ -101,8 +137,12 @@ description = "Start the single-node stack with Prometheus, Grafana, Tempo, Loki
 run = "scripts/mise-docker.sh ensure 6 && docker-compose -f compose.yaml -f compose.single.yaml -f compose.observability.yaml --profile observability up -d --scale backend=1"
 
 [tasks.performance]
-description = "Run the service-owned Locust workload"
+description = "Run the service-owned Locust workload (single-node topology)"
 run = "company-check-service/performance/run.sh"
+
+[tasks.performance-distributed]
+description = "Run the Locust workload against the distributed topology"
+run = "PERFORMANCE_TOPOLOGY=distributed company-check-service/performance/run.sh"
 
 [tasks.ps]
 description = "Show the single-node Compose stack status"

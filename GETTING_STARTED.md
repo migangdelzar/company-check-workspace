@@ -150,6 +150,7 @@ mise run smoke
 | `mise run current` | Show active tool versions for this project. |
 | `mise run outdated` | Check pinned tools for newer versions. |
 | `mise run setup-jvm` / `setup-native` | Full flow: build images + start single-node stack + wait for health. |
+| `mise run build-jvm` / `build-native` | Build images only (no stack start). |
 | `mise run start` | Start an already-built single-node stack. |
 | `mise run start-distributed` | Start Redis-coordinated two-replica topology. |
 | `mise run start-observability` | Start single-node plus Prometheus, Grafana, Tempo, Loki, and Alloy. |
@@ -158,9 +159,18 @@ mise run smoke
 | `mise run ps` / `logs` | Inspect the running stack. |
 | `mise run validate` | Fast service unit/quality gate (offset check only, no containers). |
 | `mise run service-full` | Complete service gate (Testcontainers included). |
+| `mise run integration` | Service integration test suite only. |
+| `mise run contract` | Service contract tests + OpenAPI validation. |
+| `mise run e2e` | Service E2E test suite. |
+| `mise run openapi` | Validate checked-in OpenAPI contracts only. |
 | `mise run provider` | Provider formatting, type, lint, and test checks. |
+| `mise run provider-security` | Trivy scan for high/critical provider vulnerabilities. |
+| `mise run provider-licenses` | Provider dependency license check. |
+| `mise run verify` | All service + provider + compose gates in one shot. |
+| `mise run image-smoke` | Build service image + bounded Docker smoke check. |
 | `mise run compose-check` | Render and validate all Compose overlays. |
-| `mise run performance` | Run the bounded Locust workload. |
+| `mise run performance` | Bounded Locust workload (single-node topology). |
+| `mise run performance-distributed` | Locust workload against the distributed topology. |
 | `mise run stop` | Stop the single-node and distributed stacks (keeps volumes). |
 | `mise run clean` | Stop everything, remove Compose volumes, and untag local images. |
 

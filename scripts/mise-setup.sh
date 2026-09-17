@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: scripts/mise-setup.sh <jvm|native>" >&2
+  echo "Usage: scripts/mise-setup.sh <jvm|native> [--build-only]" >&2
 }
 
 die() {
@@ -14,6 +14,10 @@ variant="${1:-}"
 if [[ "$variant" != "jvm" && "$variant" != "native" ]]; then
   usage
   exit 2
+fi
+build_only=0
+if [[ "${2:-}" == "--build-only" ]]; then
+  build_only=1
 fi
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
@@ -80,6 +84,13 @@ gradle_args=(
   --console=plain
 )
 "$repo_root/company-check-service/gradlew" "${gradle_args[@]}"
+
+if (( build_only )); then
+  echo "Images built (services not started):"
+  echo "Service image: company-check-service:local"
+  echo "Provider image: company-check-provider:local"
+  exit 0
+fi
 
 cd "$repo_root"
 docker-compose -f compose.yaml -f compose.single.yaml up -d --scale backend=1
