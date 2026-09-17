@@ -34,8 +34,10 @@ flowchart TB
 
 | Package | Responsibility | Boundary rule |
 |---|---|---|
-| `config` | Spring wiring, profiles, properties, HTTP clients, resilience, persistence, cache, rate limits, and native hints | Composes implementations; contains no workflow decisions |
-| `controller` | `BackendServiceController`, `VerificationController`, `InboundRateLimitFilter`, `VerificationExpirationScheduler`, and API DTOs | Does not call repositories or provider clients directly |
+| `config` | Spring wiring, profiles, and capability folders (`config/persistence`, `config/provider`, `config/coordination`, `config/ratelimit`, `config/cache`) binding configuration beans with their properties; native hints under `config/hints` | Composes implementations; contains no workflow decisions |
+| `controller` | `BackendServiceController`, `VerificationController`, and API DTOs | Does not call repositories or provider clients directly |
+| `filter` | `InboundRateLimitFilter` servlet filter for `GET /backend-service` admission | Keeps servlet admission control out of controllers |
+| `scheduler` | `VerificationExpirationScheduler` reaper (`@Scheduled` + lock lease) | Owns scheduling lifecycle, delegates work to services |
 | `service` | `VerificationService`, `ProviderService`, `VerificationStoreService`, `VerificationRecoveryService`, `ExpirationService`, and `service/model` | Does not depend on MVC, JDBC, Redis, HTTP client internals, entities, or provider DTOs |
 | `repository` | `VerificationRepository`, `JdbcVerificationRepository`, entities, coordination, leases, cache, and rate-limit implementations | Owns external state and persistence entities |
 | `client` | `ProviderClient`, typed FREE/PREMIUM clients, provider transport handling, and client DTOs | Owns provider wire types and HTTP integration |

@@ -3,7 +3,7 @@
 ```mermaid
 flowchart LR
   Client[API client]
-  Filter[controller.InboundRateLimitFilter\nGET /backend-service]
+  Filter[filter.InboundRateLimitFilter\nGET /backend-service]
   Controller[controller\nHTTP + DTO boundary]
   Service[service\nVerificationService + ProviderService]
   Repository[repository\nJdbcVerificationRepository + coordination]
