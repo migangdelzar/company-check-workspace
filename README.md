@@ -329,6 +329,37 @@ PERFORMANCE_TOPOLOGY=distributed \
   ./company-check-service/performance/run.sh
 ```
 
+### Local native-versus-JVM sample
+
+The following local sample used the same 10-user, 30-second, single-node
+Locust workload for both images. The request counts and p95 values come from
+the generated `locust_stats.csv` aggregate row; the memory column is one
+`docker stats` sample from the backend container during the run. It is a
+directional local comparison, not a production capacity benchmark.
+
+| Image | Immutable local image | Requests | Failures | p95 | Backend memory sample |
+|---|---|---:|---:|---:|---:|
+| JVM | `company-check-service@sha256:94fe4b0ac1d2ad70ded08f939453414457fd0a6d56a3eef7970b707ff685beb0` | 564 | 0 | 17 ms | 307.6 MiB |
+| Native | `company-check-service@sha256:322727d9457cad5c4c91908bd3087299ab1635dadea8fe5d8b9dbced3d4d7606` | 576 | 0 | 10 ms | 123.7 MiB |
+
+Both runs persisted verification records through PostgreSQL and called the
+provider simulators. Re-run the comparison with separate artifact folders if
+you need a fresh sample:
+
+```sh
+COMPANY_CHECK_SERVICE_IMAGE=company-check-service:jvm-local \
+COMPOSE_PROJECT_NAME=company-check-compare-jvm \
+PERFORMANCE_USERS=10 PERFORMANCE_SPAWN_RATE=10 PERFORMANCE_DURATION=30s \
+PERFORMANCE_REQUESTS='' PERFORMANCE_ARTIFACTS_DIR=.performance-artifacts/compare-jvm \
+  ./company-check-service/performance/run.sh
+
+COMPANY_CHECK_SERVICE_IMAGE=company-check-service:native-local \
+COMPOSE_PROJECT_NAME=company-check-compare-native \
+PERFORMANCE_USERS=10 PERFORMANCE_SPAWN_RATE=10 PERFORMANCE_DURATION=30s \
+PERFORMANCE_REQUESTS='' PERFORMANCE_ARTIFACTS_DIR=.performance-artifacts/compare-native \
+  ./company-check-service/performance/run.sh
+```
+
 ## Workspace task aliases
 
 With `mise` installed, all workspace workflows are `mise run <task>` aliases:
