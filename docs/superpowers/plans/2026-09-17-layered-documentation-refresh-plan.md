@@ -60,7 +60,7 @@
   Run:
 
   ```sh
-  tgrep --no-index -n -i -e 'adapter\.in|adapter\.out|application\.port|application\.service|com\.incode\.verification\.configuration|StartVerificationService|ProviderResolutionService' docs/adr docs/README.md
+  rg --no-index -n -i -e 'adapter\.in|adapter\.out|application\.port|application\.service|com\.incode\.verification\.configuration|StartVerificationService|ProviderResolutionService' docs/adr docs/README.md
   ```
 
   Expected: no active implementation claims remain. Any retained match must be inside an explicitly labeled rejected or historical explanation.
@@ -109,7 +109,7 @@
 
   ```sh
   awk '/```mermaid/{open++} /^```$/{if (open > 0) open--} END {if (open != 0) exit 1}' docs/architecture/*.md
-  tgrep --no-index -n -e 'VerificationService|ProviderService|VerificationStoreService|VerificationRecoveryService|JdbcVerificationRepository|CoordinationRepository|ProviderClient|free-provider|premium-provider|Redis|Prometheus|Grafana Alloy' docs/architecture
+  rg --no-index -n -e 'VerificationService|ProviderService|VerificationStoreService|VerificationRecoveryService|JdbcVerificationRepository|CoordinationRepository|ProviderClient|free-provider|premium-provider|Redis|Prometheus|Grafana Alloy' docs/architecture
   ```
 
   Expected: balanced fences and current classes/components represented in the architecture set.
@@ -185,7 +185,7 @@
   Run:
 
   ```sh
-  tgrep --no-index -n -i -e 'historical|superseded|current implementation|checked-out implementation' docs/superpowers/specs/2026-09-16-architectural-modernization-design.md docs/superpowers/specs/2026-09-17-architecture-docs-design.md docs/superpowers/plans/2026-09-17-architecture-docs-refresh-plan.md
+  rg --no-index -n -i -e 'historical|superseded|current implementation|checked-out implementation' docs/superpowers/specs/2026-09-16-architectural-modernization-design.md docs/superpowers/specs/2026-09-17-architecture-docs-design.md docs/superpowers/plans/2026-09-17-architecture-docs-refresh-plan.md
   ```
 
   Expected: each retained obsolete architecture term is surrounded by wording that identifies it as historical, proposed, rejected, or a completed migration step.
@@ -212,7 +212,7 @@
   Run:
 
   ```sh
-  tgrep --no-index -n -i -e 'adapter\.in|adapter\.out|application\.port|application\.service|com\.incode\.verification\.configuration|StartVerificationService|ProviderResolutionService' docs/README.md docs/adr docs/architecture
+  rg --no-index -n -i -e 'adapter\.in|adapter\.out|application\.port|application\.service|com\.incode\.verification\.configuration|StartVerificationService|ProviderResolutionService' docs/README.md docs/adr docs/architecture
   ```
 
   Expected: no output.
@@ -223,7 +223,7 @@
 
   ```sh
   for package in config controller service repository client mapper exception util; do test -d "company-check-service/src/main/java/com/incode/verification/$package"; done
-  tgrep --no-index -n -e 'config|controller|service|repository|client|mapper|exception|PostgreSQL|Caffeine|Redis|FREE|PREMIUM' docs/architecture docs/adr
+  rg --no-index -n -e 'config|controller|service|repository|client|mapper|exception|PostgreSQL|Caffeine|Redis|FREE|PREMIUM' docs/architecture docs/adr
   ```
 
   Expected: all eight package directories exist and current architecture concepts are represented.

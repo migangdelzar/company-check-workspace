@@ -194,7 +194,7 @@
 
   ```sh
   ruby -e 'require "pathname"; bad=[]; Dir["docs/**/*.md", "README.md", "company-check-service/docs/*.md"].each { |file| text=File.read(file); text.scan(/\[[^\]]+\]\(([^)]+)\)/).flatten.each { |link| next if link.start_with?("http://", "https://", "#", "mailto:"); target=link.split("#", 2).first; next if target.empty?; path=Pathname.new(file).dirname.join(target); bad << "#{file}: #{link}" unless path.exist? } }; abort bad.join("\n") unless bad.empty?'
-  tgrep --no-index -n -e 'setup-jvm|setup-native|4 GiB|12 GiB|paketoBuilderImage|paketoRunImage' README.md docs company-check-service/docs/image-contract.md
+  rg --no-index -n -e 'setup-jvm|setup-native|4 GiB|12 GiB|paketoBuilderImage|paketoRunImage' README.md docs company-check-service/docs/image-contract.md
   git diff --check
   ```
 

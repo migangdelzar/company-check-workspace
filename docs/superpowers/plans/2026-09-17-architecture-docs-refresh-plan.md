@@ -56,7 +56,7 @@
   Run:
 
   ```sh
-  tgrep --no-index -n 'adapter\.in|adapter\.out|application\.port|application\.service|domain package|hexagonal ports' docs/adr
+  rg --no-index -n 'adapter\.in|adapter\.out|application\.port|application\.service|domain package|hexagonal ports' docs/adr
   ```
 
   Expected: no stale implementation claims remain; historical rationale may mention the rejected hexagonal alternative only when clearly labeled as rejected/history.
@@ -114,7 +114,7 @@
   Run:
 
   ```sh
-  tgrep --no-index -n 'docs/architecture|docs/adr|backend-service|verifications|mise run|gradlew|bun run' README.md
+  rg --no-index -n 'docs/architecture|docs/adr|backend-service|verifications|mise run|gradlew|bun run' README.md
   ```
 
   Expected: all existing links, endpoints, and commands remain present.
@@ -129,7 +129,7 @@
   Run:
 
   ```sh
-  tgrep --no-index -n 'StartVerificationService|ProviderResolutionService|adapter\.in|adapter\.out|application\.port|application\.service|configuration\.|domain/' docs/adr docs/architecture README.md
+  rg --no-index -n 'StartVerificationService|ProviderResolutionService|adapter\.in|adapter\.out|application\.port|application\.service|configuration\.|domain/' docs/adr docs/architecture README.md
   ```
 
   Expected: no references to removed production packages or removed service class names. Historical ADR text must distinguish rejected alternatives from the current design.
@@ -140,7 +140,7 @@
 
   ```sh
   awk '/```mermaid/{open++} /^```$/{if (open > 0) open--} END {if (open != 0) exit 1}' docs/adr/*.md docs/architecture/*.md
-  tgrep --no-index -n '```mermaid|VerificationService|ProviderService|JdbcVerificationRepository|CoordinationRepository|free-provider|premium-provider|Redis|Prometheus|Grafana Alloy' docs/architecture
+  rg --no-index -n '```mermaid|VerificationService|ProviderService|JdbcVerificationRepository|CoordinationRepository|free-provider|premium-provider|Redis|Prometheus|Grafana Alloy' docs/architecture
   ```
 
   Expected: balanced Mermaid fences and current components represented in the architecture set.

@@ -92,7 +92,7 @@
 
 - [x] Run the Task 5 documentation gate
   - **Actions Applied**
-    - Stale-reference `tgrep` scan; package-dir existence loop (all 10 present incl. `filter`, `scheduler`);
+    - Stale-reference `rg` scan; package-dir existence loop (all 10 present incl. `filter`, `scheduler`);
       Mermaid fence `awk`; `git diff --check`; Ruby Markdown link check; `docker-compose` merges
   - **Verification**
     - Stale scan: no matches; fences balanced; `git diff --check` exit 0; links exit 0;
