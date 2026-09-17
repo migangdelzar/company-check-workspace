@@ -1,4 +1,8 @@
 services:
+  postgres:
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
   prometheus:
     image: ${PROMETHEUS_IMAGE:-prom/prometheus:v3.8.0}
     profiles: [observability]
@@ -106,17 +110,18 @@ services:
   backend:
     environment:
       MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: "true"
-      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://alloy:4317
-      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_TRANSPORT: grpc
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://alloy:4318/v1/traces
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_TRANSPORT: http
       MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
       OTEL_SERVICE_NAME: company-check-service
       OTEL_TRACES_EXPORTER: otlp
-      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://alloy:4317
-      OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: grpc
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://alloy:4318/v1/traces
+      OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: http/protobuf
 
 volumes:
   alloy-data:
   grafana-data:
   loki-data:
   prometheus-data:
+  postgres-data:
   tempo-data:

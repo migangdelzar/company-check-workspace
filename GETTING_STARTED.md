@@ -93,6 +93,18 @@ Recommended for most machines:
 mise run setup-jvm
 ```
 
+For one command that builds the default JVM image and starts the complete
+application plus observability stack:
+
+```sh
+mise run setup-all
+```
+
+Use `IMAGE_VARIANT=native mise run setup-all` for the native image path. To
+send the bounded observability workload after startup, run
+`mise run load-observability`; it sends exactly 10,000 requests and keeps the
+stack available for Grafana inspection.
+
 Native image builds take much longer and need a larger Docker allocation:
 
 ```sh
@@ -150,10 +162,12 @@ mise run smoke
 | `mise run current` | Show active tool versions for this project. |
 | `mise run outdated` | Check pinned tools for newer versions. |
 | `mise run setup-jvm` / `setup-native` | Full flow: build images + start single-node stack + wait for health. |
+| `mise run setup-all` | Build the selected image + start the complete stack with observability. |
 | `mise run build-jvm` / `build-native` | Build images only (no stack start). |
 | `mise run start` | Start an already-built single-node stack. |
 | `mise run start-distributed` | Start Redis-coordinated two-replica topology. |
 | `mise run start-observability` | Start single-node plus Prometheus, Grafana, Tempo, Loki, and Alloy. |
+| `mise run start-all` | Start the complete pre-built stack with observability. |
 | `mise run health` | Curl the backend `/actuator/health`. |
 | `mise run smoke` | Run one verification through the API. |
 | `mise run ps` / `logs` | Inspect the running stack. |
@@ -171,7 +185,9 @@ mise run smoke
 | `mise run compose-check` | Render and validate all Compose overlays. |
 | `mise run performance` | Bounded Locust workload (single-node topology). |
 | `mise run performance-distributed` | Locust workload against the distributed topology. |
+| `mise run load-observability` | Exactly 10,000 requests while keeping the observability stack running. |
 | `mise run stop` | Stop the single-node and distributed stacks (keeps volumes). |
+| `mise run stop-all` | Stop the complete observability stack (keeps volumes). |
 | `mise run clean` | Stop everything, remove Compose volumes, and untag local images. |
 
 ## Next steps

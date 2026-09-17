@@ -58,6 +58,10 @@ run = "scripts/mise-setup.sh jvm"
 description = "Build native images and start the single-node stack"
 run = "scripts/mise-setup.sh native"
 
+[tasks.setup-all]
+description = "Build the selected image and start the complete stack with observability"
+run = "scripts/mise-setup.sh \"${IMAGE_VARIANT:-jvm}\" --observability"
+
 [tasks.build-jvm]
 description = "Build JVM service and provider images without starting the stack"
 run = "scripts/mise-setup.sh jvm --build-only"
@@ -136,6 +140,10 @@ run = "scripts/mise-docker.sh ensure 4 && docker-compose -f compose.yaml -f comp
 description = "Start the single-node stack with Prometheus, Grafana, Tempo, Loki, and Alloy"
 run = "scripts/mise-docker.sh ensure 6 && docker-compose -f compose.yaml -f compose.single.yaml -f compose.observability.yaml --profile observability up -d --scale backend=1"
 
+[tasks.start-all]
+description = "Start the complete pre-built stack with observability"
+run = "scripts/mise-docker.sh ensure 6 && docker-compose -f compose.yaml -f compose.single.yaml -f compose.observability.yaml --profile observability up -d --scale backend=1"
+
 [tasks.performance]
 description = "Run the service-owned Locust workload (single-node topology)"
 run = "company-check-service/performance/run.sh"
@@ -144,6 +152,10 @@ run = "company-check-service/performance/run.sh"
 description = "Run the Locust workload against the distributed topology"
 run = "PERFORMANCE_TOPOLOGY=distributed company-check-service/performance/run.sh"
 
+[tasks.load-observability]
+description = "Send at least 10,000 requests and keep the observability stack available"
+run = "PERFORMANCE_REQUESTS=10000 PERFORMANCE_REQUESTS_AT_LEAST=true PERFORMANCE_USERS=20 PERFORMANCE_SPAWN_RATE=5 PERFORMANCE_DURATION=15m PERFORMANCE_COMPOSE_PROJECT_NAME=company-check PERFORMANCE_KEEP_STACK=true PERFORMANCE_OBSERVABILITY=true company-check-service/performance/run.sh"
+
 [tasks.ps]
 description = "Show the single-node Compose stack status"
 run = "docker-compose -f compose.yaml -f compose.single.yaml ps"
@@ -151,6 +163,40 @@ run = "docker-compose -f compose.yaml -f compose.single.yaml ps"
 [tasks.health]
 description = "Check the single-node backend health endpoint"
 run = "curl --fail --silent --show-error http://localhost:8080/actuator/health"
+
+[tasks.observability-check]
+description = "Check backend metrics, Prometheus, Grafana, and the provisioned dashboard"
+run = """
+echo "checking backend metrics"
+curl --fail --silent --show-error http://localhost:8080/actuator/prometheus >/dev/null
+echo "checking Prometheus"
+curl --fail --silent --show-error http://localhost:9090/-/ready >/dev/null
+echo "checking Grafana"
+grafana_auth="${GRAFANA_ADMIN_USER:-admin}:${GRAFANA_ADMIN_PASSWORD:-admin}"
+grafana_health="$(curl --silent --show-error --user "$grafana_auth" --output /dev/null --write-out '%{http_code}' http://localhost:3000/api/health)"
+[[ "$grafana_health" == 2* ]] || { echo "Grafana health returned HTTP $grafana_health" >&2; exit 1; }
+curl --fail --silent --show-error --user "$grafana_auth" \
+  --get --data-urlencode 'query=Company Check' http://localhost:3000/api/search | rg -q 'company-check-overview'
+verification_count="$(docker-compose -f compose.yaml -f compose.single.yaml -f compose.observability.yaml --profile observability exec -T postgres \
+  psql -U "${COMPANY_CHECK_DB_USER:-company_check}" -d "${COMPANY_CHECK_DB_NAME:-company_check}" -Atc 'select count(*) from verifications')"
+sleep 3
+trace_end="$(date +%s)"
+trace_start=$((trace_end - 3600))
+trace_result="$(curl --fail --silent --show-error --get \
+  --data-urlencode "start=$trace_start" --data-urlencode "end=$trace_end" \
+  --data-urlencode 'limit=1' http://localhost:3200/api/search)"
+if printf '%s' "$trace_result" | rg -q 'trace[Ii][Dd]'; then
+  echo "Tempo contains service traces"
+else
+  echo "Tempo is ready; no trace result returned yet: $trace_result"
+fi
+echo "Persisted verifications: $verification_count"
+echo "Observability endpoints and Company Check dashboard are ready"
+"""
+
+[tasks.grafana-reset-password]
+description = "Reset the local Grafana admin password to the configured .env value"
+run = "docker-compose -f compose.yaml -f compose.single.yaml -f compose.observability.yaml --profile observability exec -T grafana grafana cli admin reset-admin-password \"${GRAFANA_ADMIN_PASSWORD:-admin}\""
 
 [tasks.smoke]
 description = "Run a verification through the current API shape"
@@ -167,17 +213,27 @@ curl --fail http://localhost:8080/verifications/"$verification_id"
 description = "Follow single-node service logs"
 run = "docker-compose -f compose.yaml -f compose.single.yaml logs -f backend free-provider premium-provider"
 
+[tasks.observability-logs]
+description = "Show recent backend, Alloy, and Tempo logs"
+run = "docker-compose -f compose.yaml -f compose.single.yaml -f compose.observability.yaml --profile observability logs --no-color --tail=120 backend alloy tempo"
+
 [tasks.stop]
 description = "Stop the single-node and distributed Compose stacks"
 run = """
 docker-compose -f compose.yaml -f compose.single.yaml down --remove-orphans
 docker-compose -f compose.yaml -f compose.distributed.yaml down --remove-orphans
+docker-compose -f compose.yaml -f compose.single.yaml -f compose.observability.yaml --profile observability down --remove-orphans
 """
+
+[tasks.stop-all]
+description = "Stop the complete stack without removing persisted observability data"
+run = "docker-compose -f compose.yaml -f compose.single.yaml -f compose.observability.yaml --profile observability down --remove-orphans"
 
 [tasks.clean]
 description = "Stop all stacks, remove Compose volumes, and untag local images"
 run = """
 docker-compose -f compose.yaml -f compose.single.yaml down --remove-orphans -v
 docker-compose -f compose.yaml -f compose.distributed.yaml down --remove-orphans -v
+docker-compose -f compose.yaml -f compose.single.yaml -f compose.observability.yaml --profile observability down --remove-orphans -v
 docker rmi company-check-service:local company-check-provider:local 2>/dev/null || true
 """

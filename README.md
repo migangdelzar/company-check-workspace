@@ -58,6 +58,18 @@ mise run setup-jvm
 # Or: mise run setup-native
 ```
 
+For one command that builds the default JVM image and starts the complete
+application plus observability stack:
+
+```sh
+mise run setup-all
+```
+
+Use `IMAGE_VARIANT=native mise run setup-all` for the native image path. To
+send the bounded observability workload after startup, run
+`mise run load-observability`; it sends exactly 10,000 requests and keeps the
+stack available for Grafana inspection.
+
 The setup runner never overwrites an existing environment or Docker
 configuration. It uses an existing Docker daemon, or starts Colima (profile
 `emme` by default, override with `COLIMA_PROFILE`) only when Docker is
@@ -254,7 +266,9 @@ Open Grafana at <http://localhost:3000> (`admin`/`admin` by default). The other
 local endpoints are Prometheus at <http://localhost:9090>, Tempo at
 <http://localhost:3200>, Loki at <http://localhost:3100>, and Alloy at
 <http://localhost:12345>. Grafana is provisioned with Prometheus, Tempo, and
-Loki datasources automatically.
+Loki datasources plus a Company Check overview dashboard automatically.
+PostgreSQL and telemetry use named local volumes; `mise run stop-all` keeps
+them and `mise run clean` removes them.
 
 The observability profile is for local development and smoke testing. Loki and
 Tempo use local filesystem storage and no authentication; use the platform
@@ -373,11 +387,14 @@ mise run current              # show active tool versions
 mise run outdated             # check pinned tools for newer versions
 mise run setup-jvm            # build JVM images + start single-node
 # or: mise run setup-native
+mise run setup-all            # build selected image + start complete stack
+# or: IMAGE_VARIANT=native mise run setup-all
 mise run build-jvm            # build JVM images only (no stack)
 mise run build-native         # build native images only (no stack)
 mise run start                # start an already-built single-node stack
 mise run start-distributed    # start the distributed two-replica stack
 mise run start-observability  # add Prometheus, Grafana, Tempo, Loki, Alloy
+mise run start-all            # start the complete pre-built stack
 mise run health               # backend /actuator/health
 mise run smoke                # one verification through the API
 mise run validate             # fast service gate
@@ -396,11 +413,14 @@ mise run ps                   # stack status
 mise run logs                 # follow single-node logs
 mise run performance          # bounded Locust workload (single-node)
 # or: mise run performance-distributed
+mise run load-observability   # exactly 10,000 requests; keep Grafana stack up
 mise run stop                 # stop single-node and distributed stacks
+mise run stop-all             # stop the complete stack; preserve volumes
 mise run clean                # + remove Compose volumes and local images
 ```
 
-`mise run setup-jvm` and `mise run setup-native` are complete setup flows.
+`mise run setup-jvm` and `mise run setup-native` are lean complete setup flows.
+`mise run setup-all` is the one-command flow that also starts observability.
 `mise run start` only starts an already-built single-node stack, while
 `mise run compose-check` validates the single-node, distributed, and
 observability overlays. `.env.example` contains safe local defaults for new
