@@ -115,6 +115,7 @@ jobs:
           PERFORMANCE_SPAWN_RATE: ${{ inputs.spawn-rate }}
           PERFORMANCE_DURATION: ${{ inputs.duration }}
           PERFORMANCE_STRICT_HTTP: "true"
+          PERFORMANCE_REQUESTS: ""
           PERFORMANCE_ARTIFACTS_DIR: .performance-artifacts
         run: ./company-check-service/performance/run.sh
       - name: Publish Locust performance artifacts
