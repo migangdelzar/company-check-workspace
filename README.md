@@ -70,6 +70,18 @@ send the bounded observability workload after startup, run
 `mise run load-observability`; it sends exactly 10,000 requests and keeps the
 stack available for Grafana inspection.
 
+The reactive service branch uses a separate image tag so it can be tested
+without replacing the default image:
+
+```sh
+mise run setup-reactive-all
+# Or: IMAGE_VARIANT=native mise run setup-reactive-all
+mise run load-reactive-observability
+```
+
+The provisioned Grafana dashboard includes request/error/latency, JVM/CPU,
+R2DBC pool, Reactor Netty, logs, and traces panels.
+
 The setup runner never overwrites an existing environment or Docker
 configuration. It uses an existing Docker daemon, or starts Colima (profile
 `emme` by default, override with `COLIMA_PROFILE`) only when Docker is
@@ -414,6 +426,8 @@ mise run logs                 # follow single-node logs
 mise run performance          # bounded Locust workload (single-node)
 # or: mise run performance-distributed
 mise run load-observability   # exactly 10,000 requests; keep Grafana stack up
+mise run setup-reactive-all    # build/start WebFlux reactive observability stack
+mise run load-reactive-observability # at least 10,000 reactive requests
 mise run stop                 # stop single-node and distributed stacks
 mise run stop-all             # stop the complete stack; preserve volumes
 mise run clean                # + remove Compose volumes and local images

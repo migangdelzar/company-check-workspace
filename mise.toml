@@ -62,6 +62,10 @@ run = "scripts/mise-setup.sh native"
 description = "Build the selected image and start the complete stack with observability"
 run = "scripts/mise-setup.sh \"${IMAGE_VARIANT:-jvm}\" --observability"
 
+[tasks.setup-reactive-all]
+description = "Build and start the WebFlux reactive observability stack"
+run = "COMPANY_CHECK_SERVICE_IMAGE=company-check-service:reactive-local scripts/mise-setup.sh \"${IMAGE_VARIANT:-jvm}\" --observability"
+
 [tasks.build-jvm]
 description = "Build JVM service and provider images without starting the stack"
 run = "scripts/mise-setup.sh jvm --build-only"
@@ -155,6 +159,10 @@ run = "PERFORMANCE_TOPOLOGY=distributed company-check-service/performance/run.sh
 [tasks.load-observability]
 description = "Send at least 10,000 requests and keep the observability stack available"
 run = "PERFORMANCE_REQUESTS=10000 PERFORMANCE_REQUESTS_AT_LEAST=true PERFORMANCE_USERS=20 PERFORMANCE_SPAWN_RATE=5 PERFORMANCE_DURATION=15m PERFORMANCE_COMPOSE_PROJECT_NAME=company-check PERFORMANCE_KEEP_STACK=true PERFORMANCE_OBSERVABILITY=true company-check-service/performance/run.sh"
+
+[tasks.load-reactive-observability]
+description = "Load the WebFlux reactive stack with at least 10,000 requests"
+run = "COMPANY_CHECK_SERVICE_IMAGE=company-check-service:reactive-local PERFORMANCE_REQUESTS=10000 PERFORMANCE_REQUESTS_AT_LEAST=true PERFORMANCE_USERS=20 PERFORMANCE_SPAWN_RATE=5 PERFORMANCE_DURATION=15m PERFORMANCE_COMPOSE_PROJECT_NAME=company-check-reactive PERFORMANCE_KEEP_STACK=true PERFORMANCE_OBSERVABILITY=true company-check-service/performance/run.sh"
 
 [tasks.ps]
 description = "Show the single-node Compose stack status"

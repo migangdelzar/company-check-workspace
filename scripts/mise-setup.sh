@@ -25,6 +25,9 @@ for option in "${@:2}"; do
   esac
 done
 
+service_image="${COMPANY_CHECK_SERVICE_IMAGE:-company-check-service:local}"
+export COMPANY_CHECK_SERVICE_IMAGE="$service_image"
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 memory_gib=4
 if [[ "$variant" == "native" ]]; then
@@ -82,7 +85,7 @@ gradle_args=(
   -p "$repo_root/company-check-service"
   bootBuildImage
   "-PimageVariant=$variant"
-  -PimageName=company-check-service:local
+  "-PimageName=$service_image"
   --no-daemon
   --no-parallel
   --max-workers=1
@@ -92,7 +95,7 @@ gradle_args=(
 
 if (( build_only )); then
   echo "Images built (services not started):"
-  echo "Service image: company-check-service:local"
+  echo "Service image: $service_image"
   echo "Provider image: company-check-provider:local"
   exit 0
 fi
@@ -111,7 +114,7 @@ for attempt in $(seq 1 120); do
   if curl --fail --silent --show-error "$health_url" >/dev/null 2>&1; then
     if (( ! observability )); then
       echo "$compose_description is healthy"
-      echo "Service image: company-check-service:local"
+      echo "Service image: $service_image"
       echo "Provider image: company-check-provider:local"
       echo "Health URL: $health_url"
       exit 0
@@ -123,7 +126,7 @@ for attempt in $(seq 1 120); do
       && curl --fail --silent --show-error http://localhost:3100/ready >/dev/null 2>&1 \
       && curl --fail --silent --show-error http://localhost:3200/ready >/dev/null 2>&1; then
       echo "$compose_description is healthy"
-      echo "Service image: company-check-service:local"
+      echo "Service image: $service_image"
       echo "Provider image: company-check-provider:local"
       echo "Health URL: $health_url"
       echo "Grafana URL: http://localhost:3000"
