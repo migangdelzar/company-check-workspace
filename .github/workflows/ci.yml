@@ -329,7 +329,7 @@ jobs:
           build-mode: manual
       - name: Build analyzed source
         run: ./company-check-service/gradlew -p company-check-service classes --no-parallel --max-workers=1
-      - uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+      - uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
         with:
           category: /language:java
 
@@ -356,7 +356,7 @@ jobs:
           build-mode: none
       - name: Build analyzed source
         run: cd company-check-provider && bun install --frozen-lockfile && bun run build
-      - uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+      - uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
         with:
           category: /language:javascript-typescript
 
